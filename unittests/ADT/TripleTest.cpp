@@ -294,8 +294,8 @@ TEST(TripleTest, ParsedIDs) {
   EXPECT_EQ(Triple::UnknownOS, T.getOS());
   EXPECT_EQ(Triple::UnknownEnvironment, T.getEnvironment());
 
-  T = Triple("mos6502-unknown-unknown");
-  EXPECT_EQ(Triple::mos6502, T.getArch());
+  T = Triple("mcs6502-unknown-unknown");
+  EXPECT_EQ(Triple::mcs6502, T.getArch());
   EXPECT_EQ(Triple::UnknownVendor, T.getVendor());
   EXPECT_EQ(Triple::UnknownOS, T.getOS());
   EXPECT_EQ(Triple::UnknownEnvironment, T.getEnvironment());
@@ -777,7 +777,7 @@ TEST(TripleTest, BitWidthPredicates) {
   EXPECT_FALSE(T.isArch32Bit());
   EXPECT_TRUE(T.isArch64Bit());
 
-  T.setArch(Triple::mos6502);
+  T.setArch(Triple::mcs6502);
   EXPECT_TRUE(T.isArch16Bit());
   EXPECT_FALSE(T.isArch32Bit());
   EXPECT_FALSE(T.isArch64Bit());
@@ -924,7 +924,7 @@ TEST(TripleTest, BitWidthArchVariants) {
   EXPECT_EQ(Triple::mipsel, T.get32BitArchVariant().getArch());
   EXPECT_EQ(Triple::mips64el, T.get64BitArchVariant().getArch());
 
-  T.setArch(Triple::mos6502);
+  T.setArch(Triple::mcs6502);
   EXPECT_EQ(Triple::UnknownArch, T.get32BitArchVariant().getArch());
   EXPECT_EQ(Triple::UnknownArch, T.get64BitArchVariant().getArch());
 
