@@ -66,6 +66,7 @@ void ScalarEnumerationTraits<ELFYAML::ELF_EM>::enumeration(
   ECase(EM_IAMCU);
   ECase(EM_860);
   ECase(EM_MIPS);
+  ECase(EM_MOS6502);
   ECase(EM_S370);
   ECase(EM_MIPS_RS3_LE);
   ECase(EM_PARISC);
@@ -415,6 +416,8 @@ void ScalarBitSetTraits<ELFYAML::ELF_EF>::bitset(IO &IO,
     break;
   case ELF::EM_X86_64:
     break;
+  case ELF::EM_MOS6502:
+    break;
   default:
     llvm_unreachable("Unsupported architecture");
   }
@@ -646,6 +649,9 @@ void ScalarEnumerationTraits<ELFYAML::ELF_REL>::enumeration(
     break;
   case ELF::EM_LANAI:
 #include "llvm/BinaryFormat/ELFRelocs/Lanai.def"
+    break;
+  case ELF::EM_MOS6502:
+#include "llvm/BinaryFormat/ELFRelocs/MOS6502.def"
     break;
   case ELF::EM_AMDGPU:
 #include "llvm/BinaryFormat/ELFRelocs/AMDGPU.def"
