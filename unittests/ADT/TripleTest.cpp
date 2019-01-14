@@ -294,6 +294,12 @@ TEST(TripleTest, ParsedIDs) {
   EXPECT_EQ(Triple::UnknownOS, T.getOS());
   EXPECT_EQ(Triple::UnknownEnvironment, T.getEnvironment());
 
+  T = Triple("mos6502-unknown-unknown");
+  EXPECT_EQ(Triple::mos6502, T.getArch());
+  EXPECT_EQ(Triple::UnknownVendor, T.getVendor());
+  EXPECT_EQ(Triple::UnknownOS, T.getOS());
+  EXPECT_EQ(Triple::UnknownEnvironment, T.getEnvironment());
+
   T = Triple("amdgcn-mesa-mesa3d");
   EXPECT_EQ(Triple::amdgcn, T.getArch());
   EXPECT_EQ(Triple::Mesa, T.getVendor());
@@ -771,6 +777,11 @@ TEST(TripleTest, BitWidthPredicates) {
   EXPECT_FALSE(T.isArch32Bit());
   EXPECT_TRUE(T.isArch64Bit());
 
+  T.setArch(Triple::mos6502);
+  EXPECT_TRUE(T.isArch16Bit());
+  EXPECT_FALSE(T.isArch32Bit());
+  EXPECT_FALSE(T.isArch64Bit());
+
   T.setArch(Triple::msp430);
   EXPECT_TRUE(T.isArch16Bit());
   EXPECT_FALSE(T.isArch32Bit());
@@ -912,6 +923,10 @@ TEST(TripleTest, BitWidthArchVariants) {
   T.setArch(Triple::mips64el);
   EXPECT_EQ(Triple::mipsel, T.get32BitArchVariant().getArch());
   EXPECT_EQ(Triple::mips64el, T.get64BitArchVariant().getArch());
+
+  T.setArch(Triple::mos6502);
+  EXPECT_EQ(Triple::UnknownArch, T.get32BitArchVariant().getArch());
+  EXPECT_EQ(Triple::UnknownArch, T.get64BitArchVariant().getArch());
 
   T.setArch(Triple::ppc64);
   EXPECT_EQ(Triple::ppc, T.get32BitArchVariant().getArch());
