@@ -88,6 +88,13 @@ StringRef llvm::object::getELFRelocationTypeName(uint32_t Machine,
       break;
     }
     break;
+  case ELF::EM_MOS6502:
+    switch (Type) {
+#include "llvm/BinaryFormat/ELFRelocs/MOS6502.def"
+    default:
+      break;
+    }
+    break;
   case ELF::EM_PPC:
     switch (Type) {
 #include "llvm/BinaryFormat/ELFRelocs/PowerPC.def"

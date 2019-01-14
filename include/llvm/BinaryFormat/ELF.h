@@ -312,6 +312,7 @@ enum {
   EM_RISCV = 243,         // RISC-V
   EM_LANAI = 244,         // Lanai 32-bit processor
   EM_BPF = 247,           // Linux kernel bpf virtual machine
+  EM_MOS6502 = 6502,      // MOS 6502
 };
 
 // Object file classes.
@@ -615,6 +616,11 @@ enum {
 // ELF Relocation type for Lanai.
 enum {
 #include "ELFRelocs/Lanai.def"
+};
+
+// ELF Relocation types for MOS6502
+enum {
+#include "ELFRelocs/MOS6502.def"
 };
 
 // RISCV Specific e_flags
