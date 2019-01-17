@@ -9,7 +9,7 @@
 # YAML-NEXT:   Class:           ELFCLASS32
 # YAML-NEXT:   Data:            ELFDATA2LSB
 # YAML-NEXT:   Type:            ET_EXEC
-# YAML-NEXT:   Machine:         EM_MOS6502
+# YAML-NEXT:   Machine:         EM_MCS6502
 # YAML-NEXT:   Flags:           [ ]
 
 --- !ELF
@@ -17,5 +17,5 @@ FileHeader:
   Class:           ELFCLASS32
   Data:            ELFDATA2LSB
   Type:            ET_EXEC
-  Machine:         EM_MOS6502
+  Machine:         EM_MCS6502
   Flags:           [ ]
