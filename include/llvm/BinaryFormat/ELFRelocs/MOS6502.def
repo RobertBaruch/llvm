@@ -2,4 +2,4 @@
 #error "ELF_RELOC must be defined"
 #endif
 
-ELF_RELOC(R_MOS6502_NONE,                  0)
+ELF_RELOC(R_MCS6502_NONE,                  0)
