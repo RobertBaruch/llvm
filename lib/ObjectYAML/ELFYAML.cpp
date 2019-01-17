@@ -68,6 +68,7 @@ void ScalarEnumerationTraits<ELFYAML::ELF_EM>::enumeration(
   ECase(EM_860);
   ECase(EM_MCS6502);
   ECase(EM_MIPS);
+  ECase(EM_MOS6502);
   ECase(EM_S370);
   ECase(EM_MIPS_RS3_LE);
   ECase(EM_PARISC);
