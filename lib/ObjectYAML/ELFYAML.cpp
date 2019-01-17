@@ -68,7 +68,7 @@ void ScalarEnumerationTraits<ELFYAML::ELF_EM>::enumeration(
   ECase(EM_860);
   ECase(EM_MCS6502);
   ECase(EM_MIPS);
-  ECase(EM_MOS6502);
+  ECase(EM_MCS6502);
   ECase(EM_S370);
   ECase(EM_MIPS_RS3_LE);
   ECase(EM_PARISC);
@@ -652,7 +652,7 @@ void ScalarEnumerationTraits<ELFYAML::ELF_REL>::enumeration(
   case ELF::EM_LANAI:
 #include "llvm/BinaryFormat/ELFRelocs/Lanai.def"
     break;
-  case ELF::EM_MOS6502:
+  case ELF::EM_MCS6502:
 #include "llvm/BinaryFormat/ELFRelocs/MCS6502.def"
     break;
   case ELF::EM_AMDGPU:

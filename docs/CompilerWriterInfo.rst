@@ -44,6 +44,13 @@ MIPS
 
 * `MIPS 64-bit ELF Object File Specification <http://techpubs.sgi.com/library/manuals/4000/007-4658-001/pdf/007-4658-001.pdf>`_
 
+MCS6502
+-------
+
+* `MCS6500 Microcomputer Family Programming Manual <https://archive.org/details/mos_microcomputers_programming_manual>`_
+
+* `6502 Assembly Language Programming <https://archive.org/details/6502-assembly-language-programming>`_
+
 PowerPC
 -------
 
