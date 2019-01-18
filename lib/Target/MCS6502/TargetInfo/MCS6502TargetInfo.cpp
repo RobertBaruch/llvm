@@ -23,9 +23,4 @@ extern "C" void LLVMInitializeMCS6502TargetInfo() {
                                     "MOS MCS6502", "MCS6502");
 }
 
-// FIXME: Temporary stub - this function must be defined for linking to succeed
-// and will be called unconditionally by llc, so must be a no-op. Remove once
-// this function is properly implemented.
-extern "C" void LLVMInitializeMCS6502TargetMC() {}
-
 } // namespace llvm
