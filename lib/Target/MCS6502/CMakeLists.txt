@@ -3,6 +3,7 @@ set(LLVM_TARGET_DEFINITIONS MCS6502.td)
 tablegen(LLVM MCS6502GenRegisterInfo.inc -gen-register-info)
 tablegen(LLVM MCS6502GenInstrInfo.inc -gen-instr-info)
 tablegen(LLVM MCS6502GenMCCodeEmitter.inc -gen-emitter)
+tablegen(LLVM MCS6502GenSubtargetInfo.inc -gen-subtarget)
 
 add_public_tablegen_target(MCS6502CommonTableGen)
 

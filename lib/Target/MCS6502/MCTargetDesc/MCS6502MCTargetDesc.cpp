@@ -28,6 +28,9 @@
 #define GET_REGINFO_MC_DESC
 #include "MCS6502GenRegisterInfo.inc"
 
+#define GET_SUBTARGETINFO_MC_DESC
+#include "MCS6502GenSubtargetInfo.inc"
+
 using namespace llvm;
 
 static MCInstrInfo *createMCS6502MCInstrInfo() {
@@ -47,6 +50,14 @@ static MCAsmInfo *createMCS6502MCAsmInfo(const MCRegisterInfo &MRI,
   return new MCS6502MCAsmInfo(TT);
 }
 
+static MCSubtargetInfo *
+createMCS6502MCSubtargetInfo(const Triple &TT, StringRef CPU, StringRef FS) {
+  std::string CPUName = CPU;
+  if (CPUName.empty())
+    CPUName = "mcs6502";
+  return createMCS6502MCSubtargetInfoImpl(TT, CPUName, FS);
+}
+
 extern "C" void LLVMInitializeMCS6502TargetMC() {
   Target *T = &getTheMCS6502Target();
 
@@ -55,4 +66,5 @@ extern "C" void LLVMInitializeMCS6502TargetMC() {
   TargetRegistry::RegisterMCRegInfo(*T, createMCS6502MCRegisterInfo);
   TargetRegistry::RegisterMCAsmBackend(*T, createMCS6502AsmBackend);
   TargetRegistry::RegisterMCCodeEmitter(*T, createMCS6502MCCodeEmitter);
+  TargetRegistry::RegisterMCSubtargetInfo(*T, createMCS6502MCSubtargetInfo);
 }
