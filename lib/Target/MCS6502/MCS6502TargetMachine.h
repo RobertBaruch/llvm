@@ -14,6 +14,7 @@
 #ifndef LLVM_LIB_TARGET_MCS6502_MCS6502TARGETMACHINE_H
 #define LLVM_LIB_TARGET_MCS6502_MCS6502TARGETMACHINE_H
 
+#include "MCTargetDesc/MCS6502MCTargetDesc.h"
 #include "llvm/CodeGen/SelectionDAGTargetInfo.h"
 #include "llvm/IR/DataLayout.h"
 #include "llvm/Target/TargetMachine.h"
@@ -34,8 +35,6 @@ public:
     return TLOF.get();
   }
 };
-
-Target &getTheMCS6502Target();
 
 } // namespace llvm
 
