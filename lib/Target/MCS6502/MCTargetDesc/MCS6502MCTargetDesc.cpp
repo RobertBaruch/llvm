@@ -54,7 +54,7 @@ static MCSubtargetInfo *
 createMCS6502MCSubtargetInfo(const Triple &TT, StringRef CPU, StringRef FS) {
   std::string CPUName = CPU;
   if (CPUName.empty())
-    CPUName = "mcs6502";
+    CPUName = "generic";
   return createMCS6502MCSubtargetInfoImpl(TT, CPUName, FS);
 }
 
