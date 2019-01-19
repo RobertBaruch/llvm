@@ -24,10 +24,10 @@ def MODE_ABS  : MCS6502Mode<4, "Absolute", "$$$addr16", (ins i16imm:$addr16)>;
 def MODE_ABSX : MCS6502Mode<5, "Absolute, X", "$$$addr16,X", (ins i16imm:$addr16)>;
 def MODE_ABSY : MCS6502Mode<6, "Absolute, Y", "$$$addr16,Y", (ins i16imm:$addr16)>;
 def MODE_INDX : MCS6502Mode<7, "Indirect, X", "($$$addr16,X)", (ins i16imm:$addr16)>;
-def MODE_INDY : MCS6502Mode<8, "Indirect, Y", "($$$addr16),Y", (ins i16imm:$addr16)>;
+def MODE_INDY : MCS6502Mode<8, "Indirect, Y", "( $addr ),Y", (ins i16imm:$addr)>;
 def MODE_ACC  : MCS6502Mode<9, "Accumulator", "", (ins)>;
 def MODE_REL  : MCS6502Mode<10, "Relative", "#$$$simm8", (ins i8imm:$simm8)>;
-def MODE_IND  : MCS6502Mode<11, "Indirect", "($$$addr16)", (ins i16imm:$addr16)>;
+def MODE_IND  : MCS6502Mode<11, "Indirect", "( $addr )", (ins i16imm:$addr)>;
 
 /// A holder for opcode value, string, and mode.
 class MCS6502Opcode<bits<8> val, string opcodestr, MCS6502Mode mode> {
@@ -53,14 +53,14 @@ class MCS6502Inst<dag outs, MCS6502Opcode opcode,
 }
 
 /// A 1-byte instruction.
-class MVC6502Inst1Byte<dag outs, MCS6502Opcode opcode> :
+class MCS6502Inst1Byte<dag outs, MCS6502Opcode opcode> :
     MCS6502Inst<outs, opcode> {
   let Inst{7-0} = Opcode.Value;
   let Size = 1;
 }
 
 /// A 2-byte instruction.
-class MVC6502Inst2Byte<dag outs, MCS6502Opcode opcode> :
+class MCS6502Inst2Byte<dag outs, MCS6502Opcode opcode> :
     MCS6502Inst<outs, opcode> {
   bits<8> Arg;
 
@@ -70,7 +70,7 @@ class MVC6502Inst2Byte<dag outs, MCS6502Opcode opcode> :
 }
 
 /// A 3-byte instruction.
-class MVC6502Inst3Byte<dag outs, MCS6502Opcode opcode> :
+class MCS6502Inst3Byte<dag outs, MCS6502Opcode opcode> :
     MCS6502Inst<outs, opcode> {
   bits<16> Arg;
   

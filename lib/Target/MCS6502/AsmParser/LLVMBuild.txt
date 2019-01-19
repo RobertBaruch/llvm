@@ -1,4 +1,4 @@
-;===- ./lib/Target/MCS6502/LLVMBuild.txt -----------------------*- Conf -*--===;
+;===- ./lib/Target/MCS6502/AsmParser/LLVMBuild.txt -------------*- Conf -*--===;
 ;
 ;                     The LLVM Compiler Infrastructure
 ;
@@ -15,18 +15,9 @@
 ;
 ;===------------------------------------------------------------------------===;
 
-[common]
-subdirectories = AsmParser TargetInfo MCTargetDesc
-
 [component_0]
-type = TargetGroup
-name = MCS6502
-parent = Target
-has_asmparser = 1
-
-[component_1]
 type = Library
-name = MCS6502CodeGen
+name = MCS6502AsmParser
 parent = MCS6502
-required_libraries = Core CodeGen MCS6502Info Support Target
+required_libraries = MC MCParser MCS6502Desc MCS6502Info Support
 add_to_library_groups = MCS6502
