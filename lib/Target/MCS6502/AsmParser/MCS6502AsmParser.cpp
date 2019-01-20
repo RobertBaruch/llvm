@@ -29,17 +29,28 @@ namespace {
 struct MCS6502Operand;
 
 class MCS6502AsmParser : public MCTargetAsmParser {
+  // rename the misleading return values.
+  constexpr static bool kSuccess{false};
+  constexpr static bool kFailure{true};
+
   SMLoc getLoc() const { return getParser().getTok().getLoc(); }
 
+  /// This happens first. `Name` contains the instruction mnemonic in lower
+  /// case. This must parse all operands via getLexer() and getParser(),
+  /// placing the operands into the Operands vector.
+  bool ParseInstruction(ParseInstructionInfo &Info, StringRef Name,
+                        SMLoc NameLoc, OperandVector &Operands) override;
+
+  /// After ParseInstruction() is done and succeeds, this happens. Based on
+  /// the operands, set the Opcode.
   bool MatchAndEmitInstruction(SMLoc IDLoc, unsigned &Opcode,
                                OperandVector &Operands, MCStreamer &Out,
                                uint64_t &ErrorInfo,
                                bool MatchingInlineAsm) override;
 
-  bool ParseRegister(unsigned &RegNo, SMLoc &StartLoc, SMLoc &EndLoc) override;
-
-  bool ParseInstruction(ParseInstructionInfo &Info, StringRef Name,
-                        SMLoc NameLoc, OperandVector &Operands) override;
+  bool ParseRegister(unsigned &RegNo, SMLoc &StartLoc, SMLoc &EndLoc) override {
+    return kFailure; // never succeeds.
+  }
 
   bool ParseDirective(AsmToken DirectiveID) override;
 
@@ -47,8 +58,8 @@ class MCS6502AsmParser : public MCTargetAsmParser {
 #define GET_ASSEMBLER_HEADER
 #include "MCS6502GenAsmMatcher.inc"
 
+  // Do we need parseImmediage?
   OperandMatchResultTy parseImmediate(OperandVector &Operands);
-  OperandMatchResultTy parseRegister(OperandVector &Operands);
   bool parseOperand(OperandVector &Operands);
 
 public:
@@ -115,6 +126,11 @@ public:
   bool isImm() const override { return Kind == Immediate; }
   bool isMem() const override { return false; }
 
+  bool isImm8() const { return isConstantImm() && isUInt<8>(getConstantImm()); }
+  bool isImm16() const {
+    return isConstantImm() && isUInt<16>(getConstantImm());
+  }
+
   bool isConstantImm() const {
     return isImm() && dyn_cast<MCConstantExpr>(getImm());
   }
@@ -136,7 +152,7 @@ public:
   }
 
   const MCExpr *getImm() const {
-    assert(Kind == Immediate && "Invalid type access!");
+    assert((Kind != Register && Kind != Token) && "Invalid type access!");
     return Imm.Val;
   }
 
@@ -211,6 +227,28 @@ public:
 #define GET_MATCHER_IMPLEMENTATION
 #include "MCS6502GenAsmMatcher.inc"
 
+bool MCS6502AsmParser::ParseInstruction(ParseInstructionInfo &Info,
+                                        StringRef Name, SMLoc NameLoc,
+                                        OperandVector &Operands) {
+  DEBUG_WITH_TYPE("asm-matcher", dbgs()
+                                     << "ParseInstruction, " << Name << "\n");
+
+  // First operand is token for instruction
+  Operands.push_back(MCS6502Operand::createToken(Name, NameLoc));
+
+  // Parse operands
+  while (!getLexer().is(AsmToken::EndOfStatement)) {
+    DEBUG_WITH_TYPE("asm-matcher",
+                    dbgs() << "ParseInstruction, trying to parse an operand\n");
+    if (parseOperand(Operands) == kFailure)
+      return kFailure;
+  }
+  DEBUG_WITH_TYPE("asm-matcher",
+                  dbgs() << "ParseInstruction, end of statement reached\n");
+  getParser().Lex(); // Consume the EndOfStatement;
+  return kSuccess;
+}
+
 bool MCS6502AsmParser::MatchAndEmitInstruction(SMLoc IDLoc, unsigned &Opcode,
                                                OperandVector &Operands,
                                                MCStreamer &Out,
@@ -219,13 +257,15 @@ bool MCS6502AsmParser::MatchAndEmitInstruction(SMLoc IDLoc, unsigned &Opcode,
   MCInst Inst;
   SMLoc ErrorLoc;
 
+  DEBUG_WITH_TYPE("asm-matcher", dbgs() << "MatchAndEmitInstruction\n");
+
   switch (MatchInstructionImpl(Operands, Inst, ErrorInfo, MatchingInlineAsm)) {
   default:
     break;
   case Match_Success:
     Inst.setLoc(IDLoc);
     Out.EmitInstruction(Inst, getSTI());
-    return false;
+    return kSuccess;
   case Match_MissingFeature:
     return Error(IDLoc, "instruction use requires an option to be enabled");
   case Match_MnemonicFail:
@@ -245,47 +285,16 @@ bool MCS6502AsmParser::MatchAndEmitInstruction(SMLoc IDLoc, unsigned &Opcode,
   llvm_unreachable("Unknown match type detected");
 }
 
-// Although really registers don't appear in the assembly.
-bool MCS6502AsmParser::ParseRegister(unsigned &RegNo, SMLoc &StartLoc,
-                                     SMLoc &EndLoc) {
-  const AsmToken &Tok = getParser().getTok();
-  StartLoc = Tok.getLoc();
-  EndLoc = Tok.getEndLoc();
-  RegNo = 0;
-  StringRef Name = getLexer().getTok().getIdentifier();
-
-  if (!MatchRegisterName(Name)) {
-    getParser().Lex(); // Eat identifier token.
-    return false;
-  }
-
-  return Error(StartLoc, "invalid register name");
-}
-
-// Although really registers don't appear in the assembly.
-OperandMatchResultTy MCS6502AsmParser::parseRegister(OperandVector &Operands) {
-  SMLoc S = getLoc();
-  SMLoc E = SMLoc::getFromPointer(S.getPointer() - 1);
-
-  switch (getLexer().getKind()) {
-  default:
-    return MatchOperand_NoMatch;
-  case AsmToken::Identifier:
-    StringRef Name = getLexer().getTok().getIdentifier();
-    unsigned RegNo = MatchRegisterName(Name);
-    if (RegNo == 0)
-      return MatchOperand_NoMatch;
-    getLexer().Lex();
-    Operands.push_back(MCS6502Operand::createReg(RegNo, S, E));
-  }
-  return MatchOperand_Success;
-}
-
 OperandMatchResultTy MCS6502AsmParser::parseImmediate(OperandVector &Operands) {
+  if (getLexer().isNot(AsmToken::Hash)) {
+    Error(getLoc(), "Expected '#'");
+    return MatchOperand_ParseFail;
+  }
+  getParser().Lex(); // Eat '#'
+
   switch (getLexer().getKind()) {
   default:
-    return MatchOperand_NoMatch;
-  case AsmToken::LParen:
+    return MatchOperand_ParseFail;
   case AsmToken::Minus:
   case AsmToken::Plus:
   case AsmToken::Integer:
@@ -303,51 +312,64 @@ OperandMatchResultTy MCS6502AsmParser::parseImmediate(OperandVector &Operands) {
   return MatchOperand_Success;
 }
 
+// The possible operand patterns are:
+// #imm8
+// addr8
+// addr8,X
+// addr8,Y
+// addr16
+// addr16,X
+// addr16,Y
+// (addr16,X)
+// (addr16),Y
+// (addr16)
+//
+// We don't allow expressions for the moment, only integers.
 bool MCS6502AsmParser::parseOperand(OperandVector &Operands) {
-  if (parseRegister(Operands) == MatchOperand_Success)
-    return false;
-  if (parseImmediate(Operands) == MatchOperand_Success)
-    return false;
+  DEBUG_WITH_TYPE("asm-matcher", dbgs() << "parseOperand, starts with '"
+                                        << getLexer().getTok().getString()
+                                        << "'\n");
+  switch (getLexer().getKind()) {
+  default:
+    return kFailure;
+
+  // We don't include AsmToken::Comma as an operand because that is apparently
+  // ignored when doing the second pass match against instructions.
+  case AsmToken::LParen:
+  case AsmToken::RParen:
+  case AsmToken::Hash:
+    Operands.push_back(
+        MCS6502Operand::createToken(getLexer().getTok().getString(), getLoc()));
+    getParser().Lex(); // Eat token
+    return kSuccess;
+
+  case AsmToken::Comma:
+    getParser().Lex(); // Eat ','
+    if (getLexer().getKind() != AsmToken::Identifier)
+      return kFailure;
+    if (!getLexer().getTok().getString().equals("X") &&
+        !getLexer().getTok().getString().equals("Y"))
+      return kFailure;
+    Operands.push_back(
+        MCS6502Operand::createToken(getLexer().getTok().getString(), getLoc()));
+    getParser().Lex(); // Eat token
+    return kSuccess;
+
+  case AsmToken::Integer:
+    const MCExpr *IdVal;
+    SMLoc S = getLoc();
+    if (getParser().parseExpression(IdVal))
+      return kFailure;
+    SMLoc E = SMLoc::getFromPointer(S.getPointer() - 1);
+    Operands.push_back(MCS6502Operand::createImm(IdVal, S, E));
+    return kSuccess;
+  }
 
   Error(getLoc(), "unknown operand");
-  return true;
+  return kFailure;
 }
 
-bool MCS6502AsmParser::ParseInstruction(ParseInstructionInfo &Info,
-                                        StringRef Name, SMLoc NameLoc,
-                                        OperandVector &Operands) {
-  // First operand is token for instruction
-  Operands.push_back(MCS6502Operand::createToken(Name, NameLoc));
-
-  // If there are no more operands, then finish
-  if (getLexer().is(AsmToken::EndOfStatement))
-    return false;
-
-  // Parse first operand
-  if (parseOperand(Operands))
-    return true;
-
-  // Parse until end of statement, consuming commas between operands
-  while (getLexer().is(AsmToken::Comma)) {
-    // Consume comma token
-    getLexer().Lex();
-
-    // Parse next operand
-    if (parseOperand(Operands))
-      return true;
-  }
-
-  if (getLexer().isNot(AsmToken::EndOfStatement)) {
-    SMLoc Loc = getLexer().getLoc();
-    getParser().eatToEndOfStatement();
-    return Error(Loc, "unexpected token");
-  }
-
-  getParser().Lex(); // Consume the EndOfStatement;
-  return false;
-}
-
-bool MCS6502AsmParser::ParseDirective(AsmToken DirectiveID) { return true; }
+bool MCS6502AsmParser::ParseDirective(AsmToken DirectiveID) { return kFailure; }
 
 extern "C" void LLVMInitializeMCS6502AsmParser() {
   RegisterMCAsmParser<MCS6502AsmParser> X(getTheMCS6502Target());
