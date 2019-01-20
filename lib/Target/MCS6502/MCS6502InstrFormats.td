@@ -15,20 +15,6 @@ class MCS6502Mode<int n, string description, string argstr, dag ins> {
   dag InOperandList = ins;
 }
 
-def MODE_IMP  : MCS6502Mode<0, "Implied", "", (ins)>;
-def MODE_IMM  : MCS6502Mode<1, "Immediate", "#$$$imm8", (ins i8imm:$imm8)>;
-def MODE_ZP   : MCS6502Mode<2, "Zero Page", "$$$addr8", (ins i8imm:$addr8)>;
-def MODE_ZPX  : MCS6502Mode<3, "Zero Page, X", "$$$addr8,X", (ins i8imm:$addr8)>;
-def MODE_ZPY  : MCS6502Mode<3, "Zero Page, Y", "$$$addr8,Y", (ins i8imm:$addr8)>;
-def MODE_ABS  : MCS6502Mode<4, "Absolute", "$$$addr16", (ins i16imm:$addr16)>;
-def MODE_ABSX : MCS6502Mode<5, "Absolute, X", "$$$addr16,X", (ins i16imm:$addr16)>;
-def MODE_ABSY : MCS6502Mode<6, "Absolute, Y", "$$$addr16,Y", (ins i16imm:$addr16)>;
-def MODE_INDX : MCS6502Mode<7, "Indirect, X", "($$$addr16,X)", (ins i16imm:$addr16)>;
-def MODE_INDY : MCS6502Mode<8, "Indirect, Y", "( $addr ),Y", (ins i16imm:$addr)>;
-def MODE_ACC  : MCS6502Mode<9, "Accumulator", "", (ins)>;
-def MODE_REL  : MCS6502Mode<10, "Relative", "#$$$simm8", (ins i8imm:$simm8)>;
-def MODE_IND  : MCS6502Mode<11, "Indirect", "( $addr )", (ins i16imm:$addr)>;
-
 /// A holder for opcode value, string, and mode.
 class MCS6502Opcode<bits<8> val, string opcodestr, MCS6502Mode mode> {
   bits<8> Value = val;
