@@ -1,4 +1,4 @@
-;===- ./lib/Target/MCS6502/LLVMBuild.txt -----------------------*- Conf -*--===;
+;===- ./lib/Target/MCS6502/InstPtiner/LLVMBuild.txt ------------*- Conf -*--===;
 ;
 ;                     The LLVM Compiler Infrastructure
 ;
@@ -15,19 +15,9 @@
 ;
 ;===------------------------------------------------------------------------===;
 
-[common]
-subdirectories = AsmParser InstPrinter TargetInfo MCTargetDesc
-
 [component_0]
-type = TargetGroup
-name = MCS6502
-parent = Target
-has_asmparser = 1
-has_asmprinter = 1
-
-[component_1]
 type = Library
-name = MCS6502CodeGen
+name = MCS6502AsmPrinter
 parent = MCS6502
-required_libraries = AsmPrinter Core CodeGen MC MCS6502AsmPrinter MCS6502Desc MCS6502Info Support Target
+required_libraries = MC Support
 add_to_library_groups = MCS6502

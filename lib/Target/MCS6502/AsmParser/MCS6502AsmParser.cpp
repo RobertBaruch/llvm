@@ -128,7 +128,11 @@ public:
 
   bool isImm8() const { return isConstantImm() && isUInt<8>(getConstantImm()); }
   bool isImm16() const {
-    return isConstantImm() && isUInt<16>(getConstantImm());
+    // If the imm16 can fit in an imm8, then reject so that we can use the
+    // zero-page version of the instruction. For instructions that don't have
+    // a zero-page version (i.e. JMP and JSR), we must provide an artificial
+    // one.
+    return !isImm8() && isConstantImm() && isUInt<16>(getConstantImm());
   }
 
   bool isConstantImm() const {
@@ -258,10 +262,11 @@ bool MCS6502AsmParser::MatchAndEmitInstruction(SMLoc IDLoc, unsigned &Opcode,
   SMLoc ErrorLoc;
 
   DEBUG_WITH_TYPE("asm-matcher", dbgs() << "MatchAndEmitInstruction\n");
-
-  switch (MatchInstructionImpl(Operands, Inst, ErrorInfo, MatchingInlineAsm)) {
+  unsigned int result =
+      MatchInstructionImpl(Operands, Inst, ErrorInfo, MatchingInlineAsm);
+  switch (result) {
   default:
-    break;
+    return Error(IDLoc, "Unknown instruction format for mnemonic");
   case Match_Success:
     Inst.setLoc(IDLoc);
     Out.EmitInstruction(Inst, getSTI());
@@ -282,7 +287,7 @@ bool MCS6502AsmParser::MatchAndEmitInstruction(SMLoc IDLoc, unsigned &Opcode,
     return Error(ErrorLoc, "invalid operand for instruction");
   }
 
-  llvm_unreachable("Unknown match type detected");
+  llvm_unreachable("Unreachable");
 }
 
 OperandMatchResultTy MCS6502AsmParser::parseImmediate(OperandVector &Operands) {
