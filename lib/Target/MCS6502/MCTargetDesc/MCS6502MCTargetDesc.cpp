@@ -12,6 +12,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "MCS6502MCTargetDesc.h"
+#include "InstPrinter/MCS6502InstPrinter.h"
 #include "MCS6502MCAsmInfo.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/MC/MCAsmInfo.h"
@@ -50,6 +51,14 @@ static MCAsmInfo *createMCS6502MCAsmInfo(const MCRegisterInfo &MRI,
   return new MCS6502MCAsmInfo(TT);
 }
 
+static MCInstPrinter *createMCS6502MCInstPrinter(const Triple &T,
+                                                 unsigned SyntaxVariant,
+                                                 const MCAsmInfo &MAI,
+                                                 const MCInstrInfo &MII,
+                                                 const MCRegisterInfo &MRI) {
+  return new MCS6502InstPrinter(MAI, MII, MRI);
+}
+
 static MCSubtargetInfo *
 createMCS6502MCSubtargetInfo(const Triple &TT, StringRef CPU, StringRef FS) {
   std::string CPUName = CPU;
@@ -66,5 +75,6 @@ extern "C" void LLVMInitializeMCS6502TargetMC() {
   TargetRegistry::RegisterMCRegInfo(*T, createMCS6502MCRegisterInfo);
   TargetRegistry::RegisterMCAsmBackend(*T, createMCS6502AsmBackend);
   TargetRegistry::RegisterMCCodeEmitter(*T, createMCS6502MCCodeEmitter);
+  TargetRegistry::RegisterMCInstPrinter(*T, createMCS6502MCInstPrinter);
   TargetRegistry::RegisterMCSubtargetInfo(*T, createMCS6502MCSubtargetInfo);
 }
