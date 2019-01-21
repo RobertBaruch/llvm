@@ -14,61 +14,6 @@
 include "MCS6502InstrFormats.td"
 
 //===----------------------------------------------------------------------===//
-// Operands
-//===----------------------------------------------------------------------===//
-
-// Each of these AsmOperandClasses requires an is<Name> function in
-// MCS6502Operand by default.
-def Imm8AsmOperand : AsmOperandClass {
-  let Name = "Imm8";
-  let RenderMethod = "addImmOperands";
-  let DiagnosticType = !strconcat("Invalid", Name);
-}
-
-def Imm16AsmOperand : AsmOperandClass {
-  let Name = "Imm16";
-  let RenderMethod = "addImmOperands";
-  let DiagnosticType = !strconcat("Invalid", Name);
-}
-
-
-// We don't want to make the Operand base class type i8 or i16 because then they
-// will all match using the "generic matcher". For example, LDA_ZP and LDA_ABS
-// will match in essentially a random way given LDA <imm>, and the matcher
-// chooses the first instruction that matches. You need each operand to be
-// uniquely determinable.
-
-def imm8 : Operand<OtherVT> {
-  let ParserMatchClass = Imm8AsmOperand;
-}
-
-def imm16 : Operand<OtherVT> {
-  let ParserMatchClass = Imm16AsmOperand;
-}
-
-//===----------------------------------------------------------------------===//
-// Modes
-//===----------------------------------------------------------------------===//
-
-// Oh hey, where the gen-asm-matcher happily accepted \\(, the gen-asm-printer
-// doesn't! No documentation, no consistency.
-
-def MODE_IMP  : MCS6502Mode<0, "Implied", "", (ins)>;
-def MODE_IMM  : MCS6502Mode<1, "Immediate", "#$imm8", (ins imm8:$imm8)>;
-def MODE_ZP   : MCS6502Mode<2, "Zero Page", "$addr8", (ins imm8:$addr8)>;
-def MODE_ZPX  : MCS6502Mode<3, "Zero Page, X", "$addr8,X", (ins imm8:$addr8)>;
-def MODE_ZPY  : MCS6502Mode<3, "Zero Page, Y", "$addr8,Y", (ins imm8:$addr8)>;
-def MODE_ABS  : MCS6502Mode<4, "Absolute", "$addr16", (ins imm16:$addr16)>;
-def MODE_ABSX : MCS6502Mode<5, "Absolute, X", "$addr16,X", (ins imm16:$addr16)>;
-def MODE_ABSY : MCS6502Mode<6, "Absolute, Y", "$addr16,Y", (ins imm16:$addr16)>;
-def MODE_INDX : MCS6502Mode<7, "Indirect, X", "( $addr16,X )", (ins imm16:$addr16)>;
-def MODE_INDY : MCS6502Mode<8, "Indirect, Y", "( $addr16 ),Y", (ins imm16:$addr16)>;
-def MODE_ACC  : MCS6502Mode<9, "Accumulator", "", (ins)>;
-def MODE_REL  : MCS6502Mode<10, "Relative", "#$simm8", (ins imm8:$simm8)>;
-def MODE_IND  : MCS6502Mode<11, "Indirect", "( $addr16 )", (ins imm16:$addr16)>;
-def MODE_ZP_FAKE : MCS6502Mode<12, "Fake Zero Page", "$addr8", (ins imm8:$addr8)>;
-
-//===----------------------------------------------------------------------===//
 // Instructions
 //===----------------------------------------------------------------------===//
 
@@ -161,11 +106,9 @@ def OPC_INC_ABSX     : MCS6502Opcode<0xFE, "inc", MODE_ABSX>;
 def OPC_INX          : MCS6502Opcode<0xE8, "inx", MODE_IMP>;
 def OPC_INY          : MCS6502Opcode<0xC8, "iny", MODE_IMP>;
 
-def OPC_JMP_ABS      : MCS6502Opcode<0x4C, "jmp", MODE_ABS>;
-def OPC_JMP_ZP_FAKE  : MCS6502Opcode<0x4C, "jmp", MODE_ZP_FAKE>;
+def OPC_JMP_ABS      : MCS6502Opcode<0x4C, "jmp", MODE_ADDR>;
 def OPC_JMP_IND      : MCS6502Opcode<0x6C, "jmp", MODE_IND>;
-def OPC_JSR_ABS      : MCS6502Opcode<0x20, "jsr", MODE_ABS>;
-def OPC_JSR_ZP_FAKE  : MCS6502Opcode<0x20, "jsr", MODE_ZP_FAKE>;
+def OPC_JSR_ABS      : MCS6502Opcode<0x20, "jsr", MODE_ADDR>;
 
 def OPC_LDA_IMM      : MCS6502Opcode<0xA9, "lda", MODE_IMM>;
 def OPC_LDA_ZP       : MCS6502Opcode<0xA5, "lda", MODE_ZP>;
@@ -395,10 +338,8 @@ def INC_ABS  : MCS6502Inst3Byte<(outs), OPC_INC_ABS>;
 def INC_ABSX : MCS6502Inst3Byte<(outs), OPC_INC_ABSX>;
 
 def JMP_ABS  : MCS6502Inst3Byte<(outs), OPC_JMP_ABS>;
-def JMP_ZP   : MCS6502Inst3Byte<(outs), OPC_JMP_ZP_FAKE>;
 def JMP_IND  : MCS6502Inst3Byte<(outs), OPC_JMP_IND>;
 def JSR_ABS  : MCS6502Inst3Byte<(outs), OPC_JSR_ABS>;
-def JSR_ZP   : MCS6502Inst3Byte<(outs), OPC_JSR_ZP_FAKE>;
 
 def LDX_IMM  : MCS6502Inst2Byte<(outs), OPC_LDX_IMM>;
 def LDX_ZP   : MCS6502Inst2Byte<(outs), OPC_LDX_ZP>;

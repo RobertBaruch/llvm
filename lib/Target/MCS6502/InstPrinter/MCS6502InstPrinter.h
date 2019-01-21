@@ -32,6 +32,11 @@ public:
 
   void printRegName(raw_ostream &O, unsigned RegNo) const override;
 
+  // This is the PrintMethod on our Operand in MC6502InstrFormats.td.
+  void printSImmOperand(const MCInst *MI, unsigned OpNo, raw_ostream &O,
+                        const char *Modifier = nullptr);
+
+  // This is the default PrintMdethod on an Operand if not specified.
   void printOperand(const MCInst *MI, unsigned OpNo, raw_ostream &O,
                     const char *Modifier = nullptr);
 
