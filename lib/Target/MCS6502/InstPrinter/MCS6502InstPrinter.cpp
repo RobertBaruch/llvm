@@ -37,6 +37,23 @@ void MCS6502InstPrinter::printRegName(raw_ostream &O, unsigned RegNo) const {
   O << getRegisterName(RegNo);
 }
 
+void MCS6502InstPrinter::printSImmOperand(const MCInst *MI, unsigned OpNo,
+                                          raw_ostream &O,
+                                          const char *Modifier) {
+  assert((Modifier == 0 || Modifier[0] == 0) && "No modifiers supported");
+
+  const MCOperand &MO = MI->getOperand(OpNo);
+
+  if (MO.isImm()) {
+    int64_t val = MO.getImm();
+    O << val;
+    return;
+  }
+
+  assert(MO.isExpr() && "Unknown operand kind in printSImmOperand");
+  MO.getExpr()->print(O, &MAI);
+}
+
 void MCS6502InstPrinter::printOperand(const MCInst *MI, unsigned OpNo,
                                       raw_ostream &O, const char *Modifier) {
   assert((Modifier == 0 || Modifier[0] == 0) && "No modifiers supported");
