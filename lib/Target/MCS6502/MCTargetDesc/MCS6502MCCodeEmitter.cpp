@@ -18,6 +18,8 @@
 #include "llvm/MC/MCContext.h"
 #include "llvm/MC/MCExpr.h"
 #include "llvm/MC/MCInst.h"
+#include "llvm/MC/MCInstrDesc.h"
+#include "llvm/MC/MCInstrInfo.h"
 #include "llvm/MC/MCRegisterInfo.h"
 #include "llvm/MC/MCSymbol.h"
 #include "llvm/Support/EndianStream.h"
@@ -32,16 +34,20 @@ STATISTIC(MCNumEmitted, "Number of MC instructions emitted");
 namespace {
 
 class MCS6502MCCodeEmitter : public MCCodeEmitter {
+  const MCInstrInfo &MCII;
+  const MCRegisterInfo &MRI;
   MCContext &Ctx;
 
 public:
-  MCS6502MCCodeEmitter(MCContext &ctx) : Ctx(ctx) {}
+  MCS6502MCCodeEmitter(const MCInstrInfo &mcii, const MCRegisterInfo &mri,
+                       MCContext &ctx)
+      : MCII(mcii), MRI(mri), Ctx(ctx) {}
 
   // Disallow copy and assign.
   MCS6502MCCodeEmitter(const MCS6502MCCodeEmitter &) = delete;
   void operator=(const MCS6502MCCodeEmitter &) = delete;
 
-  ~MCS6502MCCodeEmitter() override {}
+  ~MCS6502MCCodeEmitter() override = default;
 
   void encodeInstruction(const MCInst &MI, raw_ostream &OS,
                          SmallVectorImpl<MCFixup> &Fixups,
@@ -64,8 +70,29 @@ void MCS6502MCCodeEmitter::encodeInstruction(const MCInst &MI, raw_ostream &OS,
                                              SmallVectorImpl<MCFixup> &Fixups,
                                              const MCSubtargetInfo &STI) const {
   // TODO: write only the bytes in the instruction!
-  uint32_t Bits = getBinaryCodeForInstr(MI, Fixups, STI);
-  support::endian::Writer(OS, support::endianness::little).write(Bits);
+  union {
+    char Bytes[4];
+    uint32_t Bits;
+  } Code;
+
+  Code.Bits = getBinaryCodeForInstr(MI, Fixups, STI);
+
+  // That's nice, but we still don't know how big the instruction is in bytes,
+  // so we get the description of the instruction from the MCII table.
+
+  const MCInstrDesc &Desc = MCII.get(MI.getOpcode());
+
+  switch (Desc.getSize()) {
+  case 3:
+    support::endian::write(OS, Code.Bytes[2], support::endianness::little);
+    LLVM_FALLTHROUGH;
+  case 2:
+    support::endian::write(OS, Code.Bytes[1], support::endianness::little);
+    LLVM_FALLTHROUGH;
+  case 1:
+    support::endian::write(OS, Code.Bytes[0], support::endianness::little);
+    break;
+  }
   ++MCNumEmitted;
 }
 
@@ -87,7 +114,7 @@ MCS6502MCCodeEmitter::getMachineOpValue(const MCInst &MI, const MCOperand &MO,
 MCCodeEmitter *llvm::createMCS6502MCCodeEmitter(const MCInstrInfo &MCII,
                                                 const MCRegisterInfo &MRI,
                                                 MCContext &Ctx) {
-  return new MCS6502MCCodeEmitter(Ctx);
+  return new MCS6502MCCodeEmitter(MCII, MRI, Ctx);
 }
 
 #include "MCS6502GenMCCodeEmitter.inc"

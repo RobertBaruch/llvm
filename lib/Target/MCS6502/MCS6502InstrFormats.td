@@ -61,6 +61,7 @@ class MCS6502Inst3Byte<dag outs, MCS6502Opcode opcode> :
   bits<16> Arg;
   
   let Inst{23-16} = Opcode.Value;
-  let Inst{15-0} = Arg;
+  let Inst{15-8} = Arg{7-0};
+  let Inst{7-0} = Arg{15-8};
   let Size = 3;
 }

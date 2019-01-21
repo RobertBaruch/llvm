@@ -19,5 +19,5 @@
 type = Library
 name = MCS6502Desc
 parent = MCS6502
-required_libraries = MC MCS6502Info Support
+required_libraries = MC MCS6502AsmPrinter MCS6502Info Support
 add_to_library_groups = MCS6502

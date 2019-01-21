@@ -5,6 +5,7 @@ tablegen(LLVM MCS6502GenInstrInfo.inc -gen-instr-info)
 tablegen(LLVM MCS6502GenMCCodeEmitter.inc -gen-emitter)
 tablegen(LLVM MCS6502GenSubtargetInfo.inc -gen-subtarget)
 tablegen(LLVM MCS6502GenAsmMatcher.inc -gen-asm-matcher)
+tablegen(LLVM MCS6502GenAsmWriter.inc -gen-asm-writer)
 
 add_public_tablegen_target(MCS6502CommonTableGen)
 
@@ -13,5 +14,6 @@ add_llvm_target(MCS6502CodeGen
   )
 
 add_subdirectory(AsmParser)
-add_subdirectory(TargetInfo)
+add_subdirectory(InstPrinter)
 add_subdirectory(MCTargetDesc)
+add_subdirectory(TargetInfo)
