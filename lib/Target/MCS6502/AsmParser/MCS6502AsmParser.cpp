@@ -84,6 +84,7 @@ struct MCS6502Operand : public MCParsedAsmOperand {
     Token,
     Register,
     Immediate,
+    SImm8,
   } Kind;
 
   struct RegOp {
@@ -113,6 +114,7 @@ public:
       Reg = o.Reg;
       break;
     case Immediate:
+    case SImm8:
       Imm = o.Imm;
       break;
     case Token:
@@ -127,12 +129,14 @@ public:
   bool isMem() const override { return false; }
 
   bool isImm8() const { return isConstantImm() && isUInt<8>(getConstantImm()); }
+  bool isSImm8() const { return isConstantImm() && isInt<8>(getConstantImm()); }
   bool isImm16() const {
     // If the imm16 can fit in an imm8, then reject so that we can use the
-    // zero-page version of the instruction. For instructions that don't have
-    // a zero-page version (i.e. JMP and JSR), we must provide an artificial
-    // one.
+    // zero-page version of the instruction.
     return !isImm8() && isConstantImm() && isUInt<16>(getConstantImm());
+  }
+  bool isAddr16() const {
+    return isConstantImm() && isUInt<16>(getConstantImm());
   }
 
   bool isConstantImm() const {
@@ -170,6 +174,9 @@ public:
     case Immediate:
       OS << *getImm();
       break;
+    case SImm8:
+      OS << "<simm8 " << *getImm() << ">";
+      break;
     case Register:
       OS << "<register " << getReg() << ">";
       break;
@@ -205,6 +212,15 @@ public:
     return Op;
   }
 
+  static std::unique_ptr<MCS6502Operand> createSImm8(const MCExpr *Val, SMLoc S,
+                                                     SMLoc E) {
+    auto Op = make_unique<MCS6502Operand>(SImm8);
+    Op->Imm.Val = Val;
+    Op->StartLoc = S;
+    Op->EndLoc = E;
+    return Op;
+  }
+
   void addExpr(MCInst &Inst, const MCExpr *Expr) const {
     assert(Expr && "Expr shouldn't be null!");
     if (auto *CE = dyn_cast<MCConstantExpr>(Expr))
@@ -220,6 +236,11 @@ public:
   }
 
   void addImmOperands(MCInst &Inst, unsigned N) const {
+    assert(N == 1 && "Invalid number of operands!");
+    addExpr(Inst, getImm());
+  }
+
+  void addSImm8Operands(MCInst &Inst, unsigned N) const {
     assert(N == 1 && "Invalid number of operands!");
     addExpr(Inst, getImm());
   }
@@ -360,6 +381,8 @@ bool MCS6502AsmParser::parseOperand(OperandVector &Operands) {
     getParser().Lex(); // Eat token
     return kSuccess;
 
+  case AsmToken::Plus:
+  case AsmToken::Minus:
   case AsmToken::Integer:
     const MCExpr *IdVal;
     SMLoc S = getLoc();
