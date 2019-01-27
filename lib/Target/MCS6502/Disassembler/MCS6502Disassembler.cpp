@@ -74,6 +74,14 @@ static DecodeStatus decodeSImmOperand(MCInst &Inst, uint64_t Imm,
   return MCDisassembler::Success;
 }
 
+template <unsigned N>
+static DecodeStatus decodeAddress(MCInst &Inst, uint64_t Imm, int64_t Address,
+                                  const void *Decoder) {
+  assert(isUInt<N>(Imm) && "Invalid address");
+  Inst.addOperand(MCOperand::createImm(SignExtend64<N>(Imm)));
+  return MCDisassembler::Success;
+}
+
 #include "MCS6502GenDisassemblerTables.inc"
 
 DecodeStatus MCS6502Disassembler::getInstruction(MCInst &MI, uint64_t &Size,
