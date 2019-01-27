@@ -7,13 +7,17 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "MCTargetDesc/MCS6502FixupKinds.h"
 #include "MCTargetDesc/MCS6502MCTargetDesc.h"
 #include "llvm/MC/MCELFObjectWriter.h"
 #include "llvm/MC/MCFixup.h"
 #include "llvm/MC/MCObjectWriter.h"
+#include "llvm/Support/Debug.h"
 #include "llvm/Support/ErrorHandling.h"
 
 using namespace llvm;
+
+#define DEBUG_TYPE "obj-writer"
 
 namespace {
 
@@ -33,11 +37,25 @@ MCS6502ELFObjectWriter::MCS6502ELFObjectWriter(uint8_t OSABI)
 
 MCS6502ELFObjectWriter::~MCS6502ELFObjectWriter() {}
 
+// Returns the relocation type, which are defined in MCS6502.def.
 unsigned MCS6502ELFObjectWriter::getRelocType(MCContext &Ctx,
                                               const MCValue &Target,
                                               const MCFixup &Fixup,
                                               bool IsPCRel) const {
-  report_fatal_error("invalid fixup kind!");
+  LLVM_DEBUG(dbgs() << "getRelocType for fixup kind " << Fixup.getKind()
+                    << "\n");
+
+  // Determine the type of relocation
+  switch ((unsigned)Fixup.getKind()) {
+  default:
+    llvm_unreachable("invalid fixup kind!");
+  case MCS6502::fixup_mcs6502_symbol8:
+    return ELF::R_MCS6502_SYMBOL8;
+  case MCS6502::fixup_mcs6502_symbol16:
+    return ELF::R_MCS6502_SYMBOL16;
+  case MCS6502::fixup_mcs6502_branch:
+    return ELF::R_MCS6502_BRANCH;
+  }
 }
 
 } // namespace

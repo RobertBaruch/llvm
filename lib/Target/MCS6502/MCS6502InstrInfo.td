@@ -106,9 +106,9 @@ def OPC_INC_ABSX     : MCS6502Opcode<0xFE, "inc", MODE_ABSX>;
 def OPC_INX          : MCS6502Opcode<0xE8, "inx", MODE_IMP>;
 def OPC_INY          : MCS6502Opcode<0xC8, "iny", MODE_IMP>;
 
-def OPC_JMP_ABS      : MCS6502Opcode<0x4C, "jmp", MODE_ADDR>;
+def OPC_JMP_ABS      : MCS6502Opcode<0x4C, "jmp", MODE_ABS>;
 def OPC_JMP_IND      : MCS6502Opcode<0x6C, "jmp", MODE_IND>;
-def OPC_JSR_ABS      : MCS6502Opcode<0x20, "jsr", MODE_ADDR>;
+def OPC_JSR_ABS      : MCS6502Opcode<0x20, "jsr", MODE_ABS>;
 
 def OPC_LDA_IMM      : MCS6502Opcode<0xA9, "lda", MODE_IMM>;
 def OPC_LDA_ZP       : MCS6502Opcode<0xA5, "lda", MODE_ZP>;
@@ -254,14 +254,14 @@ def ASL_ZPX  : MCS6502Inst2Byte<(outs), OPC_ASL_ZPX>;
 def ASL_ABS  : MCS6502Inst3Byte<(outs), OPC_ASL_ABS>;
 def ASL_ABSX : MCS6502Inst3Byte<(outs), OPC_ASL_ABSX>;
 
-def BCC_REL  : MCS6502Inst2Byte<(outs), OPC_BCC_REL>;
-def BCS_REL  : MCS6502Inst2Byte<(outs), OPC_BCS_REL>;
-def BEQ_REL  : MCS6502Inst2Byte<(outs), OPC_BEQ_REL>;
-def BMI_REL  : MCS6502Inst2Byte<(outs), OPC_BMI_REL>;
-def BNE_REL  : MCS6502Inst2Byte<(outs), OPC_BNE_REL>;
-def BPL_REL  : MCS6502Inst2Byte<(outs), OPC_BPL_REL>;
-def BVC_REL  : MCS6502Inst2Byte<(outs), OPC_BVC_REL>;
-def BVS_REL  : MCS6502Inst2Byte<(outs), OPC_BVS_REL>;
+def BCC_REL  : MCS6502Inst2ByteRel<(outs), OPC_BCC_REL>;
+def BCS_REL  : MCS6502Inst2ByteRel<(outs), OPC_BCS_REL>;
+def BEQ_REL  : MCS6502Inst2ByteRel<(outs), OPC_BEQ_REL>;
+def BMI_REL  : MCS6502Inst2ByteRel<(outs), OPC_BMI_REL>;
+def BNE_REL  : MCS6502Inst2ByteRel<(outs), OPC_BNE_REL>;
+def BPL_REL  : MCS6502Inst2ByteRel<(outs), OPC_BPL_REL>;
+def BVC_REL  : MCS6502Inst2ByteRel<(outs), OPC_BVC_REL>;
+def BVS_REL  : MCS6502Inst2ByteRel<(outs), OPC_BVS_REL>;
 
 def BIT_ZP   : MCS6502Inst2Byte<(outs), OPC_BIT_ZP>;
 def BIT_ABS  : MCS6502Inst3Byte<(outs), OPC_BIT_ABS>;
