@@ -35,6 +35,14 @@ bcs .LBB1
 .LBB1:
 tay
 
+.LBB2:
+tay
+sta val8
+; CHECK-FIXUP: fixup A - offset: 0, value : val8, kind: fixup_mcs6502_symbol8
+bcs .LBB2
+; CHECK-INST: bcs #-3
+; CHECK-FIXUP: fixup A - offset: 0, value : .LBB2, kind: fixup_mcs6502_symbol8
+
 .set val16, 0x1234
 .set val8, 0xAB
 

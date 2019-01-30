@@ -23,6 +23,7 @@ enum Fixups {
   fixup_mcs6502_branch = FirstTargetFixupKind,
   fixup_mcs6502_symbol8,  // A symbol that must be 8 bits
   fixup_mcs6502_symbol16, // A symbol that must be 16 bits
+  fixup_mcs6502_addrref,  // A reference to an address
   fixup_mcs6502_invalid,  // Sentinel value for last fixup
   NumTargetFixupKinds = fixup_mcs6502_invalid - FirstTargetFixupKind
 };

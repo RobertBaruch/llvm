@@ -50,6 +50,22 @@ def ImmediateAsmOperand : AsmOperandClass {
   let RenderMethod = "addImmOperands";
 }
 
+def Addr8AsmOperand : AsmOperandClass {
+  let Name = "Addr8";
+  let RenderMethod = "addImmOperands";
+}
+
+def Addr8XAsmOperand : AsmOperandClass {
+  let Name = "Addr8X";
+  let RenderMethod = "addImmOperands";
+}
+
+def Addr8YAsmOperand : AsmOperandClass {
+  let Name = "Addr8Y";
+  let RenderMethod = "addImmOperands";
+}
+
+// These are all 16-bit addresses.
 def AddrAsmOperand : AsmOperandClass {
   let Name = "Addr";
   let RenderMethod = "addImmOperands";
@@ -121,6 +137,21 @@ def addr16 : Operand<OtherVT> {
   let DecoderMethod = "decodeUImmOperand<16>";
 }
 
+def addr8 : Operand<OtherVT> {
+  let ParserMatchClass = Addr8AsmOperand;
+  let PrintMethod = "printAddress8";
+}
+
+def addr8x : Operand<OtherVT> {
+  let ParserMatchClass = Addr8XAsmOperand;
+  let PrintMethod = "printAddress8X";
+}
+
+def addr8y : Operand<OtherVT> {
+  let ParserMatchClass = Addr8YAsmOperand;
+  let PrintMethod = "printAddress8Y";
+}
+
 def immed : Operand<OtherVT> {
   let ParserMatchClass = ImmediateAsmOperand;
   let PrintMethod = "printImmediate";
@@ -177,14 +208,14 @@ class MCS6502Mode<int n, string description, string argstr, dag ins> {
 
 def MODE_IMP  : MCS6502Mode<0, "Implied", "", (ins)>;
 def MODE_IMM  : MCS6502Mode<1, "Immediate", "$imm8", (ins immed:$imm8)>;
-def MODE_ZP   : MCS6502Mode<2, "Zero Page", "]$addr", (ins addr:$addr)>;
-def MODE_ZPX  : MCS6502Mode<3, "Zero Page, X", "]$addr", (ins addr:$addr)>;
-def MODE_ZPY  : MCS6502Mode<3, "Zero Page, Y", "]$addr", (ins addr:$addr)>;
+def MODE_ZP   : MCS6502Mode<2, "Zero Page", "$addr", (ins addr8:$addr)>;
+def MODE_ZPX  : MCS6502Mode<3, "Zero Page, X", "$addr", (ins addr8x:$addr)>;
+def MODE_ZPY  : MCS6502Mode<3, "Zero Page, Y", "$addr", (ins addr8y:$addr)>;
 def MODE_ABS  : MCS6502Mode<4, "Absolute", "$addr16", (ins addr:$addr16)>;
 def MODE_ABSX : MCS6502Mode<5, "Absolute, X", "$addr16", (ins addrx:$addr16)>;
 def MODE_ABSY : MCS6502Mode<6, "Absolute, Y", "$addr16", (ins addry:$addr16)>;
-def MODE_INDX : MCS6502Mode<7, "Indirect, X", "$addr16", (ins indxaddr:$addr16)>;
-def MODE_INDY : MCS6502Mode<8, "Indirect, Y", "$addr16", (ins indyaddr:$addr16)>;
+def MODE_INDX : MCS6502Mode<7, "Indirect, X", "$addr", (ins indxaddr:$addr)>;
+def MODE_INDY : MCS6502Mode<8, "Indirect, Y", "$addr", (ins indyaddr:$addr)>;
 def MODE_ACC  : MCS6502Mode<9, "Accumulator", "", (ins)>;
 def MODE_REL  : MCS6502Mode<10, "Relative", "$imm8", (ins addr:$imm8)>;
 def MODE_IND  : MCS6502Mode<11, "Indirect", "$addr16", (ins indaddr:$addr16)>;
@@ -228,6 +259,15 @@ class MCS6502Inst1Byte<dag outs, MCS6502Opcode opcode> :
   let Size = 1;
 }
 
+/// A 1-byte return-from-call instruction.
+class MCS6502Inst1ByteRet<dag outs, MCS6502Opcode opcode> :
+    MCS6502Inst<outs, opcode> {
+  field bits<8> Inst;
+  let Inst{7-0} = Opcode.Value;
+  let Size = 1;
+  let isReturn = 1;
+}
+
 /// A 2-byte instruction.
 class MCS6502Inst2Byte<dag outs, MCS6502Opcode opcode> :
     MCS6502Inst<outs, opcode> {
@@ -239,7 +279,18 @@ class MCS6502Inst2Byte<dag outs, MCS6502Opcode opcode> :
   let Size = 2;
 }
 
-/// A 2-byte instruction.
+/// A 2-byte zero-page instruction.
+class MCS6502Inst2ByteZP<dag outs, MCS6502Opcode opcode> :
+    MCS6502Inst<outs, opcode> {
+  field bits<16> Inst;
+  bits<8> addr; // This name has to match the $name in the args.
+
+  let Inst{15-8} = Opcode.Value;
+  let Inst{7-0} = addr;
+  let Size = 2;
+}
+
+/// A 2-byte conditional branch instruction.
 class MCS6502Inst2ByteRel<dag outs, MCS6502Opcode opcode> :
     MCS6502Inst<outs, opcode> {
   field bits<16> Inst;
@@ -264,4 +315,48 @@ class MCS6502Inst3Byte<dag outs, MCS6502Opcode opcode> :
   let Inst{15-8} = addr16{7-0};
   let Inst{7-0} = addr16{15-8};
   let Size = 3;
+}
+
+/// A 3-byte store-to-memory instruction.
+class MCS6502Inst3ByteStore<dag outs, MCS6502Opcode opcode> :
+    MCS6502Inst<outs, opcode> {
+  field bits<24> Inst; // max size 3 bytes
+  bits<16> addr16;
+  
+  let Inst{23-16} = Opcode.Value;
+  let Inst{15-8} = addr16{7-0};
+  let Inst{7-0} = addr16{15-8};
+  let Size = 3;
+  let mayStore = 1;
+  // Technically a store-indirect is also mayLoad.
+}
+
+/// A 3-byte load-from-memory instruction.
+class MCS6502Inst3ByteLoad<dag outs, MCS6502Opcode opcode> :
+    MCS6502Inst<outs, opcode> {
+  field bits<24> Inst; // max size 3 bytes
+  bits<16> addr16;
+  
+  let Inst{23-16} = Opcode.Value;
+  let Inst{15-8} = addr16{7-0};
+  let Inst{7-0} = addr16{15-8};
+  let Size = 3;
+  let mayLoad = 1;
+}
+
+/// A 3-byte jump instruction.
+class MCS6502Inst3ByteJump<dag outs, MCS6502Opcode opcode, int jsr,
+    int ind = 0> : MCS6502Inst<outs, opcode> {
+  field bits<24> Inst; // max size 3 bytes
+  bits<16> addr16;
+  
+  let Inst{23-16} = Opcode.Value;
+  let Inst{15-8} = addr16{7-0};
+  let Inst{7-0} = addr16{15-8};
+  let Size = 3;
+  let isBranch = 1;
+  let isBarrier = 1;  // always transfers control flow to another block
+  let isIndirectBranch = ind;
+
+  let isCall = jsr;
 }
