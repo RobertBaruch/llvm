@@ -98,6 +98,7 @@ DecodeStatus MCS6502Disassembler::getInstruction(MCInst &MI, uint64_t &Size,
       decodeInstruction(DecoderTable8, MI, Inst >> 24, Address, this, STI);
   if (status == MCDisassembler::Success) {
     LLVM_DEBUG(dbgs() << "OK!\n");
+    LLVM_DEBUG(dbgs() << "  It has " << MI.getNumOperands() << " operands\n");
     return status;
   }
 
@@ -107,12 +108,21 @@ DecodeStatus MCS6502Disassembler::getInstruction(MCInst &MI, uint64_t &Size,
   Size = 2;
   status =
       decodeInstruction(DecoderTable16, MI, Inst >> 16, Address, this, STI);
-  if (status == MCDisassembler::Success)
+  if (status == MCDisassembler::Success) {
+    LLVM_DEBUG(dbgs() << "OK!\n");
+    LLVM_DEBUG(dbgs() << "  It has " << MI.getNumOperands() << " operands\n");
     return status;
+  }
 
   LLVM_DEBUG(dbgs() << "No? How about Inst32: ");
   LLVM_DEBUG(llvm::write_hex(dbgs(), Inst >> 8, HexPrintStyle::PrefixLower));
   LLVM_DEBUG(dbgs() << "\n");
   Size = 3;
-  return decodeInstruction(DecoderTable24, MI, Inst >> 8, Address, this, STI);
+  status = decodeInstruction(DecoderTable24, MI, Inst >> 8, Address, this, STI);
+  if (status == MCDisassembler::Success) {
+    LLVM_DEBUG(dbgs() << "OK!\n");
+    LLVM_DEBUG(dbgs() << "  It has " << MI.getNumOperands() << " operands\n");
+    return status;
+  }
+  return status;
 }

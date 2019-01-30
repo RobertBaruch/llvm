@@ -218,8 +218,8 @@ def PHA_IMP  : MCS6502Inst1Byte<(outs), OPC_PHA>;
 def PHP_IMP  : MCS6502Inst1Byte<(outs), OPC_PHP>;
 def PLA_IMP  : MCS6502Inst1Byte<(outs), OPC_PLA>;
 def PLP_IMP  : MCS6502Inst1Byte<(outs), OPC_PLP>;
-def RTI_IMP  : MCS6502Inst1Byte<(outs), OPC_RTI>;
-def RTS_IMP  : MCS6502Inst1Byte<(outs), OPC_RTS>;
+def RTI_IMP  : MCS6502Inst1ByteRet<(outs), OPC_RTI>;
+def RTS_IMP  : MCS6502Inst1ByteRet<(outs), OPC_RTS>;
 def SEC_IMP  : MCS6502Inst1Byte<(outs), OPC_SEC>;
 def SED_IMP  : MCS6502Inst1Byte<(outs), OPC_SED>;
 def SEI_IMP  : MCS6502Inst1Byte<(outs), OPC_SEI>;
@@ -285,13 +285,13 @@ def EOR_INDX : MCS6502Inst3Byte<(outs), OPC_EOR_INDX>;
 def EOR_INDY : MCS6502Inst3Byte<(outs), OPC_EOR_INDY>;
 
 def LDA_IMM  : MCS6502Inst2Byte<(outs), OPC_LDA_IMM>;
-def LDA_ZP   : MCS6502Inst2Byte<(outs), OPC_LDA_ZP>;
-def LDA_ZPX  : MCS6502Inst2Byte<(outs), OPC_LDA_ZPX>;
-def LDA_ABS  : MCS6502Inst3Byte<(outs), OPC_LDA_ABS>;
-def LDA_ABSX : MCS6502Inst3Byte<(outs), OPC_LDA_ABSX>;
-def LDA_ABSY : MCS6502Inst3Byte<(outs), OPC_LDA_ABSY>;
-def LDA_INDX : MCS6502Inst3Byte<(outs), OPC_LDA_INDX>;
-def LDA_INDY : MCS6502Inst3Byte<(outs), OPC_LDA_INDY>;
+def LDA_ZP   : MCS6502Inst2ByteZP<(outs), OPC_LDA_ZP>;
+def LDA_ZPX  : MCS6502Inst2ByteZP<(outs), OPC_LDA_ZPX>;
+def LDA_ABS  : MCS6502Inst3ByteLoad<(outs), OPC_LDA_ABS>;
+def LDA_ABSX : MCS6502Inst3ByteLoad<(outs), OPC_LDA_ABSX>;
+def LDA_ABSY : MCS6502Inst3ByteLoad<(outs), OPC_LDA_ABSY>;
+def LDA_INDX : MCS6502Inst2ByteZP<(outs), OPC_LDA_INDX>;
+def LDA_INDY : MCS6502Inst2ByteZP<(outs), OPC_LDA_INDY>;
 
 def ORA_IMM  : MCS6502Inst2Byte<(outs), OPC_ORA_IMM>;
 def ORA_ZP   : MCS6502Inst2Byte<(outs), OPC_ORA_ZP>;
@@ -311,13 +311,13 @@ def SBC_ABSY : MCS6502Inst3Byte<(outs), OPC_SBC_ABSY>;
 def SBC_INDX : MCS6502Inst3Byte<(outs), OPC_SBC_INDX>;
 def SBC_INDY : MCS6502Inst3Byte<(outs), OPC_SBC_INDY>;
 
-def STA_ZP   : MCS6502Inst2Byte<(outs), OPC_STA_ZP>;
-def STA_ZPX  : MCS6502Inst2Byte<(outs), OPC_STA_ZPX>;
-def STA_ABS  : MCS6502Inst3Byte<(outs), OPC_STA_ABS>;
-def STA_ABSX : MCS6502Inst3Byte<(outs), OPC_STA_ABSX>;
-def STA_ABSY : MCS6502Inst3Byte<(outs), OPC_STA_ABSY>;
-def STA_INDX : MCS6502Inst3Byte<(outs), OPC_STA_INDX>;
-def STA_INDY : MCS6502Inst3Byte<(outs), OPC_STA_INDY>;
+def STA_ZP   : MCS6502Inst2ByteZP<(outs), OPC_STA_ZP>;
+def STA_ZPX  : MCS6502Inst2ByteZP<(outs), OPC_STA_ZPX>;
+def STA_ABS  : MCS6502Inst3ByteStore<(outs), OPC_STA_ABS>;
+def STA_ABSX : MCS6502Inst3ByteStore<(outs), OPC_STA_ABSX>;
+def STA_ABSY : MCS6502Inst3ByteStore<(outs), OPC_STA_ABSY>;
+def STA_INDX : MCS6502Inst2ByteZP<(outs), OPC_STA_INDX>;
+def STA_INDY : MCS6502Inst2ByteZP<(outs), OPC_STA_INDY>;
 
 def CPX_IMM  : MCS6502Inst2Byte<(outs), OPC_CPX_IMM>;
 def CPX_ZP   : MCS6502Inst2Byte<(outs), OPC_CPX_ZP>;
@@ -337,9 +337,9 @@ def INC_ZPX  : MCS6502Inst2Byte<(outs), OPC_INC_ZPX>;
 def INC_ABS  : MCS6502Inst3Byte<(outs), OPC_INC_ABS>;
 def INC_ABSX : MCS6502Inst3Byte<(outs), OPC_INC_ABSX>;
 
-def JMP_ABS  : MCS6502Inst3Byte<(outs), OPC_JMP_ABS>;
-def JMP_IND  : MCS6502Inst3Byte<(outs), OPC_JMP_IND>;
-def JSR_ABS  : MCS6502Inst3Byte<(outs), OPC_JSR_ABS>;
+def JMP_ABS  : MCS6502Inst3ByteJump<(outs), OPC_JMP_ABS, 0 /* jsr */>;
+def JMP_IND  : MCS6502Inst3ByteJump<(outs), OPC_JMP_IND, 0 /* jsr */, 1 /* indirect */>;
+def JSR_ABS  : MCS6502Inst3ByteJump<(outs), OPC_JSR_ABS, 1 /* jsr */>;
 
 def LDX_IMM  : MCS6502Inst2Byte<(outs), OPC_LDX_IMM>;
 def LDX_ZP   : MCS6502Inst2Byte<(outs), OPC_LDX_ZP>;

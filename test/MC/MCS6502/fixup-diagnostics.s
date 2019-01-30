@@ -12,3 +12,7 @@ bcs .TOO_FAR_AHEAD ; CHECK: [[@LINE]]:1: error: Fixup value for branch out of ra
 .fill 256
 .TOO_FAR_AHEAD:
 tay
+
+lda (val16,X)
+
+.set val16, 0x1234

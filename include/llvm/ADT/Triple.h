@@ -186,8 +186,7 @@ public:
     AMDPAL,     // AMD PAL Runtime
     HermitCore, // HermitCore Unikernel/Multikernel
     Hurd,       // GNU/Hurd
-    WASI,       // Experimental WebAssembly OS
-    LastOSType = WASI
+    LastOSType = Hurd
   };
   enum EnvironmentType {
     UnknownEnvironment,
@@ -415,7 +414,7 @@ public:
     if (LHS[1] != Minor)
       return LHS[1] < Minor;
     if (LHS[2] != Micro)
-      return LHS[2] < Micro;
+      return LHS[1] < Micro;
 
     return false;
   }
@@ -586,11 +585,6 @@ public:
   /// Tests whether the OS is Hurd.
   bool isOSHurd() const {
     return getOS() == Triple::Hurd;
-  }
-
-  /// Tests whether the OS is WASI.
-  bool isOSWASI() const {
-    return getOS() == Triple::WASI;
   }
 
   /// Tests whether the OS uses glibc.
