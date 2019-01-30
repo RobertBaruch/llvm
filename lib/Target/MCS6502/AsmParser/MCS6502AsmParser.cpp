@@ -144,6 +144,9 @@ struct MCS6502Operand : public MCParsedAsmOperand {
     AddrX,
     AddrY,
     Addr,
+    Addr8,
+    Addr8X,
+    Addr8Y,
   } Kind;
 
   struct RegOp {
@@ -179,6 +182,9 @@ public:
     case Addr:
     case AddrX:
     case AddrY:
+    case Addr8:
+    case Addr8X:
+    case Addr8Y:
       Imm = o.Imm;
       break;
     case Token:
@@ -194,6 +200,9 @@ public:
   bool isAddr() const { return Kind == Addr; }
   bool isAddrX() const { return Kind == AddrX; }
   bool isAddrY() const { return Kind == AddrY; }
+  bool isAddr8() const { return Kind == Addr8; }
+  bool isAddr8X() const { return Kind == Addr8X; }
+  bool isAddr8Y() const { return Kind == Addr8Y; }
   bool isIndAddr() const { return Kind == IndAddr; }
   bool isIndXAddr() const { return Kind == IndXAddr; }
   bool isIndYAddr() const { return Kind == IndYAddr; }
@@ -252,6 +261,15 @@ public:
       break;
     case AddrY:
       OS << "<addr,y " << *getImm() << ">";
+      break;
+    case Addr8:
+      OS << "<addr " << *getImm() << ">";
+      break;
+    case Addr8X:
+      OS << "<addr8,x " << *getImm() << ">";
+      break;
+    case Addr8Y:
+      OS << "<addr8,y " << *getImm() << ">";
       break;
     case IndAddr:
       OS << "<(addr) " << *getImm() << ">";
@@ -437,18 +455,25 @@ bool MCS6502AsmParser::MatchAndEmitInstruction(SMLoc IDLoc, unsigned &Opcode,
 bool MCS6502AsmParser::parseImmediate(OperandVector &Operands) {
   SMLoc S = getLoc();
 
+  // Error returns kFailure but also sets the error for the location.
+  // The error gets printed during assembly.
   if (getLexer().isNot(AsmToken::Hash) && getLexer().isNot(AsmToken::Slash)) {
-    Error(getLoc(), "Expected '#' or '/'");
-    return kFailure;
+    return Error(S, "Expected '#' or '/'");
   }
   bool UseHighByte = getLexer().getKind() == AsmToken::Slash;
   getParser().Lex(); // Eat '#' or '/'.
 
   const MCExpr *IdVal;
   if (getParser().parseExpression(IdVal) == kFailure)
-    return kFailure;
+    return Error(S, "Expected expression after '#'");
 
   SMLoc E = SMLoc::getFromPointer(S.getPointer() - 1);
+
+  if (IdVal->getKind() == MCExpr::ExprKind::Constant &&
+      static_cast<uint64_t>(
+          reinterpret_cast<const MCConstantExpr *>(IdVal)->getValue()) > 0xFF) {
+    return Error(S, "Value after '#' too large");
+  }
   Operands.push_back(MCS6502Operand::createImm(IdVal, S, E));
   return kSuccess;
 }
@@ -463,7 +488,7 @@ bool MCS6502AsmParser::parseAbsolute(OperandVector &Operands) {
   LLVM_DEBUG(dbgs() << "  parseOperand: absolute, " << getLexer().getKind()
                     << "\n");
   if (getParser().parseExpression(IdVal) == kFailure)
-    return kFailure;
+    return Error(S, "Expected expression");
 
   if (getLexer().isNot(AsmToken::Comma)) {
     SMLoc E = SMLoc::getFromPointer(S.getPointer() - 1);
@@ -474,10 +499,10 @@ bool MCS6502AsmParser::parseAbsolute(OperandVector &Operands) {
 
   StringRef reg;
   if (getParser().parseIdentifier(reg) == kFailure)
-    return kFailure;
+    return Error(S, "Expected 'X' or 'Y' after '<expression>,'");
 
   if (!reg.equals_lower("x") && !reg.equals_lower("y"))
-    return kFailure;
+    return Error(S, "Expected 'X' or 'Y' after '<expression>,'");
 
   SMLoc E = SMLoc::getFromPointer(S.getPointer() - 1);
   Operands.push_back(reg.equals_lower("x")
@@ -493,19 +518,18 @@ bool MCS6502AsmParser::parseIndirect(OperandVector &Operands) {
   SMLoc S = getLoc();
 
   if (getLexer().isNot(AsmToken::LParen)) {
-    Error(getLoc(), "Expected '('");
-    return kFailure;
+    return Error(S, "Expected '('");
   }
   getParser().Lex(); // Eat '('.
 
   const MCExpr *IdVal;
   if (getParser().parseExpression(IdVal) == kFailure) {
-    LLVM_DEBUG(dbgs() << "  parseOperand: indirect, failed expr\n");
-    return kFailure;
+    return Error(S, "Expected expression after '('");
   }
-
+  LLVM_DEBUG(dbgs() << "  Expr kind " << IdVal->getKind() << "\n");
   LLVM_DEBUG(dbgs() << "  parseOperand: indirect, next after expr: "
                     << getLexer().getKind() << "\n");
+
   switch (getLexer().getKind()) {
   default:
     return kFailure;
@@ -514,14 +538,23 @@ bool MCS6502AsmParser::parseIndirect(OperandVector &Operands) {
     getParser().Lex(); // Eat ','.
     LLVM_DEBUG(dbgs() << "  parseOperand: (indirect,)\n");
     if (getLexer().isNot(AsmToken::Identifier))
-      return kFailure;
+      return Error(S, "Expected 'X' after '(<expression>,'");
+
     StringRef x;
     if (getParser().parseIdentifier(x) == kFailure || !x.equals_lower("x"))
-      return kFailure;
+      return Error(S, "Expected 'X' after '(<expression>,'");
     if (getLexer().isNot(AsmToken::RParen))
-      return kFailure;
+      return Error(S, "Expected ')' after '(<expression>,X'");
+
     getParser().Lex(); // Eat ')'.
     SMLoc E = SMLoc::getFromPointer(S.getPointer() - 1);
+
+    if (IdVal->getKind() == MCExpr::ExprKind::Constant &&
+        static_cast<uint64_t>(
+            reinterpret_cast<const MCConstantExpr *>(IdVal)->getValue()) >
+            0xFF) {
+      return Error(S, "Value of (indirect address,X) too large");
+    }
     Operands.push_back(MCS6502Operand::createIndXAddr(IdVal, S, E));
     return kSuccess;
   }
@@ -533,13 +566,20 @@ bool MCS6502AsmParser::parseIndirect(OperandVector &Operands) {
       LLVM_DEBUG(dbgs() << "  parseOperand: (indirect),\n");
       StringRef y;
       if (getParser().parseIdentifier(y) == kFailure || !y.equals_lower("y"))
-        return kFailure;
+        return Error(S, "Expected 'Y' after '(<expression>),'");
       SMLoc E = SMLoc::getFromPointer(S.getPointer() - 1);
+      if (IdVal->getKind() == MCExpr::ExprKind::Constant &&
+          static_cast<uint64_t>(
+              reinterpret_cast<const MCConstantExpr *>(IdVal)->getValue()) >
+              0xFF) {
+        return Error(S, "Value of (indirect address),Y too large");
+      }
       Operands.push_back(MCS6502Operand::createIndYAddr(IdVal, S, E));
       return kSuccess;
     }
     LLVM_DEBUG(dbgs() << "  parseOperand: (indirect)\n");
     SMLoc E = SMLoc::getFromPointer(S.getPointer() - 1);
+
     Operands.push_back(MCS6502Operand::createIndAddr(IdVal, S, E));
     return kSuccess;
   }

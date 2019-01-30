@@ -39,6 +39,15 @@ public:
   void printImmediate(const MCInst *MI, unsigned OpNo, raw_ostream &O,
                       const char *Modifier = nullptr);
 
+  void printAddress8(const MCInst *MI, unsigned OpNo, raw_ostream &O,
+                     const char *Modifier = nullptr);
+
+  void printAddress8X(const MCInst *MI, unsigned OpNo, raw_ostream &O,
+                      const char *Modifier = nullptr);
+
+  void printAddress8Y(const MCInst *MI, unsigned OpNo, raw_ostream &O,
+                      const char *Modifier = nullptr);
+
   void printAddress(const MCInst *MI, unsigned OpNo, raw_ostream &O,
                     const char *Modifier = nullptr);
 

@@ -121,9 +121,18 @@ MCS6502MCCodeEmitter::getMachineOpValue(const MCInst &MI, const MCOperand &MO,
 
   LLVM_DEBUG(dbgs() << "encodeInstruction: getMachineOpValue\n");
 
-  // Constants just get their value returned, no fixups needed.
-  if (MO.isImm())
-    return static_cast<unsigned>(MO.getImm());
+  // Constants might need to be fixed up if they're an address.
+  if (MO.isImm()) {
+    if (!Desc.mayLoad() && !Desc.mayStore())
+      return static_cast<unsigned>(MO.getImm());
+
+    const MCConstantExpr *Const = MCConstantExpr::create(MO.getImm(), Ctx);
+    Fixups.push_back(MCFixup::create(
+        0 /* offset */, Const, MCFixupKind(MCS6502::fixup_mcs6502_addrref),
+        MI.getLoc()));
+    ++MCNumFixups;
+    return 0;
+  }
 
   assert(MO.isExpr() &&
          "getMachineOpValue expects only expressions or immediates");
@@ -139,6 +148,8 @@ MCS6502MCCodeEmitter::getMachineOpValue(const MCInst &MI, const MCOperand &MO,
       cast<MCSymbolRefExpr>(Expr)->getKind() == MCSymbolRefExpr::VK_None) {
     if (Desc.isConditionalBranch()) {
       FixupKind = MCS6502::fixup_mcs6502_branch;
+    } else if (Desc.mayLoad() || Desc.mayStore()) {
+      FixupKind = MCS6502::fixup_mcs6502_addrref;
     } else {
       FixupKind = Desc.getSize() == 2 ? MCS6502::fixup_mcs6502_symbol8
                                       : MCS6502::fixup_mcs6502_symbol16;

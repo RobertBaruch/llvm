@@ -77,6 +77,61 @@ void MCS6502InstPrinter::printImmediate(const MCInst *MI, unsigned OpNo,
   MO.getExpr()->print(O, &MAI, false);
 }
 
+void MCS6502InstPrinter::printAddress8(const MCInst *MI, unsigned OpNo,
+                                       raw_ostream &O, const char *Modifier) {
+  assert((Modifier == 0 || Modifier[0] == 0) && "No modifiers supported");
+  const MCInstrDesc &Desc = MII.get(MI->getOpcode());
+  assert((MI->getNumOperands() == 1) && "NumOperands is not 1");
+
+  const MCOperand &MO = MI->getOperand(OpNo);
+
+  if (MO.isImm()) {
+    llvm::write_hex(O, MO.getImm(), HexPrintStyle::PrefixLower);
+    return;
+  }
+
+  assert(MO.isExpr() && "Unknown operand kind in printOperand");
+  MO.getExpr()->print(O, &MAI, false);
+}
+
+void MCS6502InstPrinter::printAddress8X(const MCInst *MI, unsigned OpNo,
+                                        raw_ostream &O, const char *Modifier) {
+  assert((Modifier == 0 || Modifier[0] == 0) && "No modifiers supported");
+  const MCInstrDesc &Desc = MII.get(MI->getOpcode());
+  assert((MI->getNumOperands() == 1) && "NumOperands is not 1");
+
+  const MCOperand &MO = MI->getOperand(OpNo);
+
+  if (MO.isImm()) {
+    llvm::write_hex(O, MO.getImm(), HexPrintStyle::PrefixLower);
+    O << ",X";
+    return;
+  }
+
+  assert(MO.isExpr() && "Unknown operand kind in printOperand");
+  MO.getExpr()->print(O, &MAI, false);
+  O << ",X";
+}
+
+void MCS6502InstPrinter::printAddress8Y(const MCInst *MI, unsigned OpNo,
+                                        raw_ostream &O, const char *Modifier) {
+  assert((Modifier == 0 || Modifier[0] == 0) && "No modifiers supported");
+  const MCInstrDesc &Desc = MII.get(MI->getOpcode());
+  assert((MI->getNumOperands() == 1) && "NumOperands is not 1");
+
+  const MCOperand &MO = MI->getOperand(OpNo);
+
+  if (MO.isImm()) {
+    llvm::write_hex(O, MO.getImm(), HexPrintStyle::PrefixLower);
+    O << ",Y";
+    return;
+  }
+
+  assert(MO.isExpr() && "Unknown operand kind in printOperand");
+  MO.getExpr()->print(O, &MAI, false);
+  O << ",Y";
+}
+
 void MCS6502InstPrinter::printAddress(const MCInst *MI, unsigned OpNo,
                                       raw_ostream &O, const char *Modifier) {
   assert((Modifier == 0 || Modifier[0] == 0) && "No modifiers supported");
