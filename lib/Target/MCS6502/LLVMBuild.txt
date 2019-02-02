@@ -30,5 +30,6 @@ has_disassembler = 1
 type = Library
 name = MCS6502CodeGen
 parent = MCS6502
-required_libraries = AsmPrinter Core CodeGen MC MCS6502AsmPrinter MCS6502Desc MCS6502Info Support Target
+required_libraries = AsmPrinter Core CodeGen MC MCS6502AsmPrinter MCS6502Desc
+    MCS6502Info SelectionDAG Support Target
 add_to_library_groups = MCS6502

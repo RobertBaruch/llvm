@@ -14,6 +14,13 @@
 include "MCS6502InstrFormats.td"
 
 //===----------------------------------------------------------------------===//
+// MCS6502-specific DAG nodes.
+//===----------------------------------------------------------------------===//
+
+def RetFlag : SDNode<"MCS6502ISD::RET_FLAG", SDTNone,
+                     [SDNPHasChain, SDNPOptInGlue, SDNPVariadic]>;
+
+//===----------------------------------------------------------------------===//
 // Instructions
 //===----------------------------------------------------------------------===//
 
@@ -360,3 +367,20 @@ def STX_ABS  : MCS6502Inst3Byte<(outs), OPC_STX_ABS>;
 def STY_ZP   : MCS6502Inst2Byte<(outs), OPC_STY_ZP>;
 def STY_ZPX  : MCS6502Inst2Byte<(outs), OPC_STY_ZPX>;
 def STY_ABS  : MCS6502Inst3Byte<(outs), OPC_STY_ABS>;
+
+//===----------------------------------------------------------------------===//
+// Pseudo instructions and codegen patterns.
+//
+// Naming convention: For 'generic' pattern classes, we use the naming
+// convention PatTy1Ty2. For pattern classes which offer a more complex
+// expansion, prefix the class name, e.g. BccPat.
+//===----------------------------------------------------------------------===//
+
+/// Generic pattern classes
+
+class PatGprImm<SDPatternOperator OpNode, MCS6502Inst2Byte Inst>
+  : Pat<(OpNode A:$rs1, immed:$imm8), (Inst immed:$imm8)>;
+
+/// Simple arithmetic operations
+
+def : PatGprImm<add, ADC_IMM>;

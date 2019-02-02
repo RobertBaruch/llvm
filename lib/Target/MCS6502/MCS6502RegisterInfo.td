@@ -22,4 +22,6 @@ def Y : MCS6502Reg<"Y">;
 
 } // Namespace "MCS6502"
 
+// The order of registers represents the preferred allocation sequence.
+// Registers are listed in the order caller-save, callee-save, specials.
 def GPR : RegisterClass<"MCS6502", [i8], 8, (add A, X, Y)>;

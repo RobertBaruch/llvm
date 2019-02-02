@@ -18,6 +18,7 @@ include "llvm/Target/Target.td"
 //===----------------------------------------------------------------------===//
 
 include "MCS6502RegisterInfo.td"
+include "MCS6502CallingConv.td"
 include "MCS6502InstrInfo.td"
 
 //===----------------------------------------------------------------------===//
@@ -30,7 +31,9 @@ def : ProcessorModel<"generic", NoSchedModel, []>;
 // Define the MCS6502 target.
 //===----------------------------------------------------------------------===//
 
-def MCS6502InstrInfo : InstrInfo;
+def MCS6502InstrInfo : InstrInfo {
+  let guessInstructionProperties = 0;
+}
 
 def MCS6502AsmParser : AsmParser {
   let ShouldEmitMatchRegisterAltName = 0;

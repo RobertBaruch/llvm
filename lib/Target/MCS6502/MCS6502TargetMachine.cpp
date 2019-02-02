@@ -12,6 +12,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "MCS6502TargetMachine.h"
+#include "MCS6502.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/CodeGen/Passes.h"
 #include "llvm/CodeGen/TargetLoweringObjectFileImpl.h"
@@ -54,10 +55,32 @@ MCS6502TargetMachine::MCS6502TargetMachine(const Target &T, const Triple &TT,
     : LLVMTargetMachine(T, computeDataLayout(TT), TT, CPU, FS, Options,
                         getEffectiveRelocModel(TT, RM),
                         getEffectiveCodeModel(CM, CodeModel::Small), OL),
-      TLOF(make_unique<TargetLoweringObjectFileELF>()) {
+      TLOF(make_unique<TargetLoweringObjectFileELF>()),
+      Subtarget(TT, CPU, FS, *this) {
   initAsmInfo();
 }
 
+namespace {
+
+class MCS6502PassConfig : public TargetPassConfig {
+public:
+  MCS6502PassConfig(MCS6502TargetMachine &TM, PassManagerBase &PM)
+      : TargetPassConfig(TM, PM) {}
+
+  MCS6502TargetMachine &getMCS6502TargetMachine() const {
+    return getTM<MCS6502TargetMachine>();
+  }
+
+  bool addInstSelector() override;
+};
+
+} // namespace
+
+bool MCS6502PassConfig::addInstSelector() {
+  addPass(createMCS6502ISelDag(getMCS6502TargetMachine()));
+  return false;
+}
+
 TargetPassConfig *MCS6502TargetMachine::createPassConfig(PassManagerBase &PM) {
-  return new TargetPassConfig(*this, PM);
+  return new MCS6502PassConfig(*this, PM);
 }
