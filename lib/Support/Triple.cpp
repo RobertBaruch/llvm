@@ -29,6 +29,7 @@ StringRef Triple::getArchTypeName(ArchType Kind) {
   case bpfel:          return "bpfel";
   case bpfeb:          return "bpfeb";
   case hexagon:        return "hexagon";
+  case mcs6502:        return "mcs6502";
   case mips:           return "mips";
   case mipsel:         return "mipsel";
   case mips64:         return "mips64";
@@ -94,6 +95,8 @@ StringRef Triple::getArchTypePrefix(ArchType Kind) {
   case ppc64:
   case ppc64le:
   case ppc:         return "ppc";
+
+  case mcs6502:     return "mcs6502";
 
   case mips:
   case mipsel:
@@ -265,6 +268,7 @@ Triple::ArchType Triple::getArchTypeForLLVMName(StringRef Name) {
     .Case("armeb", armeb)
     .Case("avr", avr)
     .StartsWith("bpf", BPFArch)
+    .Case("mcs6502", mcs6502)
     .Case("mips", mips)
     .Case("mipsel", mipsel)
     .Case("mips64", mips64)
@@ -395,6 +399,7 @@ static Triple::ArchType parseArch(StringRef ArchName) {
     .Case("thumb", Triple::thumb)
     .Case("thumbeb", Triple::thumbeb)
     .Case("avr", Triple::avr)
+    .Case("mcs6502", Triple::mcs6502)
     .Case("msp430", Triple::msp430)
     .Cases("mips", "mipseb", "mipsallegrex", "mipsisa32r6",
            "mipsr6", Triple::mips)
@@ -656,6 +661,7 @@ static Triple::ObjectFormatType getDefaultFormat(const Triple &T) {
   case Triple::kalimba:
   case Triple::le32:
   case Triple::le64:
+  case Triple::mcs6502:
   case Triple::mips:
   case Triple::mips64:
   case Triple::mips64el:
@@ -1208,6 +1214,7 @@ static unsigned getArchPointerBitWidth(llvm::Triple::ArchType Arch) {
     return 0;
 
   case llvm::Triple::avr:
+  case llvm::Triple::mcs6502:
   case llvm::Triple::msp430:
     return 16;
 
@@ -1285,6 +1292,7 @@ Triple Triple::get32BitArchVariant() const {
   case Triple::avr:
   case Triple::bpfel:
   case Triple::bpfeb:
+  case Triple::mcs6502:
   case Triple::msp430:
   case Triple::systemz:
   case Triple::ppc64le:
@@ -1349,6 +1357,7 @@ Triple Triple::get64BitArchVariant() const {
   case Triple::hexagon:
   case Triple::kalimba:
   case Triple::lanai:
+  case Triple::mcs6502:
   case Triple::msp430:
   case Triple::r600:
   case Triple::tce:
@@ -1420,6 +1429,7 @@ Triple Triple::getBigEndianArchVariant() const {
   case Triple::kalimba:
   case Triple::le32:
   case Triple::le64:
+  case Triple::mcs6502:
   case Triple::msp430:
   case Triple::nvptx64:
   case Triple::nvptx:
@@ -1504,6 +1514,7 @@ bool Triple::isLittleEndian() const {
   case Triple::kalimba:
   case Triple::le32:
   case Triple::le64:
+  case Triple::mcs6502:
   case Triple::mips64el:
   case Triple::mipsel:
   case Triple::msp430:
