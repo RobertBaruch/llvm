@@ -311,6 +311,7 @@ enum {
   EM_RISCV = 243,         // RISC-V
   EM_LANAI = 244,         // Lanai 32-bit processor
   EM_BPF = 247,           // Linux kernel bpf virtual machine
+  EM_MCS6502 = 254,       // MOS Technology MCS6502
 };
 
 // Object file classes.
@@ -728,6 +729,11 @@ enum {
 // ELF Relocation types for BPF
 enum {
 #include "ELFRelocs/BPF.def"
+};
+
+// ELF Relocation types for MCS6502
+enum {
+#include "ELFRelocs/MCS6502.def"
 };
 
 // MSP430 specific e_flags
