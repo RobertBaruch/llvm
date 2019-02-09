@@ -10,7 +10,7 @@
 # YAML-NEXT: Data:       ELFDATA2LSB
 # YAML-NEXT: Type:       ET_EXEC
 # YAML-NEXT: Machine:    EM_MCS6502
-# YAML-NEXT: Flags:      [ ]
+# YAML-NEXT: Symbols:    {}
 
 --- !ELF
 FileHeader:
