@@ -216,6 +216,7 @@ void ScalarEnumerationTraits<ELFYAML::ELF_EM>::enumeration(
   ECase(EM_RISCV);
   ECase(EM_LANAI);
   ECase(EM_BPF);
+  ECase(EM_MCS6502);
 #undef ECase
 }
 
@@ -414,6 +415,8 @@ void ScalarBitSetTraits<ELFYAML::ELF_EF>::bitset(IO &IO,
     BCase(EF_AMDGPU_SRAM_ECC);
     break;
   case ELF::EM_X86_64:
+    break;
+  case ELF::EM_MCS6502:
     break;
   default:
     llvm_unreachable("Unsupported architecture");
@@ -653,6 +656,9 @@ void ScalarEnumerationTraits<ELFYAML::ELF_REL>::enumeration(
     break;
   case ELF::EM_BPF:
 #include "llvm/BinaryFormat/ELFRelocs/BPF.def"
+    break;
+  case ELF::EM_MCS6502:
+#include "llvm/BinaryFormat/ELFRelocs/MCS6502.def"
     break;
   default:
     llvm_unreachable("Unsupported architecture");
