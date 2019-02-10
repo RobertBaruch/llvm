@@ -15,16 +15,17 @@
 ;===------------------------------------------------------------------------===;
 
 [common]
-subdirectories = TargetInfo
+subdirectories = AsmParser InstPrinter MCTargetDesc TargetInfo
 
 [component_0]
 type = TargetGroup
 name = MCS6502
 parent = Target
+has_asmparser = 1
 
 [component_1]
 type = Library
 name = MCS6502CodeGen
 parent = MCS6502
-required_libraries = Core CodeGen MCS6502Info Support Target
+required_libraries = AsmPrinter Core CodeGen MC MCS6502AsmPrinter MCS6502Desc MCS6502Info Support Target
 add_to_library_groups = MCS6502
