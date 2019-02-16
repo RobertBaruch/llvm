@@ -105,6 +105,8 @@ MCS6502MCCodeEmitter::getMachineOpValue(const MCInst &MI, const MCOperand &MO,
   if (MO.isImm())
     return static_cast<unsigned>(MO.getImm());
 
+  LLVM_DEBUG(dbgs() << "Unhandled machine op value: ");
+  LLVM_DEBUG(MO.print(dbgs()));
   llvm_unreachable("Unhandled expression!");
   return 0;
 }

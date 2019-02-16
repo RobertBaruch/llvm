@@ -29,6 +29,7 @@ using namespace llvm;
 void MCS6502InstPrinter::printInst(const MCInst *MI, raw_ostream &O,
                                    StringRef Annot,
                                    const MCSubtargetInfo &STI) {
+  assert("Whoah!");
   printInstruction(MI, O);
   printAnnotation(O, Annot);
 }
@@ -55,4 +56,29 @@ void MCS6502InstPrinter::printOperand(const MCInst *MI, unsigned OpNo,
 
   assert(MO.isExpr() && "Unknown operand kind in printOperand");
   MO.getExpr()->print(O, &MAI);
+}
+
+void MCS6502InstPrinter::printImmediate(const MCInst *MI, unsigned OpNo,
+                                        raw_ostream &O, const char *Modifier) {
+  assert((Modifier == 0 || Modifier[0] == 0) && "No modifiers supported");
+
+  const MCOperand &MO = MI->getOperand(OpNo);
+
+  assert(MO.isImm() && "printImmediate can only print immediates");
+
+  llvm::write_hex(O, static_cast<uint8_t>(MO.getImm()),
+                  HexPrintStyle::PrefixLower);
+}
+
+void MCS6502InstPrinter::printImmediate16(const MCInst *MI, unsigned OpNo,
+                                          raw_ostream &O,
+                                          const char *Modifier) {
+  assert((Modifier == 0 || Modifier[0] == 0) && "No modifiers supported");
+
+  const MCOperand &MO = MI->getOperand(OpNo);
+
+  assert(MO.isImm() && "printImmediate16 can only print immediates");
+
+  llvm::write_hex(O, static_cast<uint16_t>(MO.getImm()),
+                  HexPrintStyle::PrefixLower);
 }

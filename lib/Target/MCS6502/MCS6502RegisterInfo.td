@@ -27,7 +27,15 @@ foreach i = 0-31 in {
 
 } // namespace MCS6502
 
-def PseudoRegs : RegisterClass<"MCS6502", [i8], 8, 
+def PseudoReg : RegisterClass<"MCS6502", [i8], 8, 
   (add (sequence "X%u", 0, 31))>;
 
-def PhysicalRegs : RegisterClass<"MCS6502", [i8], 8, (add A, X, Y)>;
+def PhysicalReg : RegisterClass<"MCS6502", [i8], 8, (add A, X, Y)>;
+
+def AccReg : RegisterClass<"MCS6502", [i8], 8, (add A)>;
+def ZPXReg : RegisterClass<"MCS6502", [i8], 8, (add X)>;
+def ZPYReg : RegisterClass<"MCS6502", [i8], 8, (add Y)>;
+def AbsXReg : RegisterClass<"MCS6502", [i8], 8, (add X)>;
+def AbsYReg : RegisterClass<"MCS6502", [i8], 8, (add Y)>;
+def PreIndReg : RegisterClass<"MCS6502", [i8], 8, (add X)>;
+def PostIndReg : RegisterClass<"MCS6502", [i8], 8, (add Y)>;

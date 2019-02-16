@@ -22,15 +22,48 @@
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/TargetRegistry.h"
 
+#define DEBUG_TYPE "asmparser"
+
 using namespace llvm;
 
 namespace {
 
-struct MCS6502Operand;
+class MCS6502Operand;
 
 class MCS6502AsmParser : public MCTargetAsmParser {
+  static constexpr bool kParseSuccess = false;
+  static constexpr bool kParseFailure = true;
+
   SMLoc getLoc() const { return getParser().getTok().getLoc(); }
 
+  /// After ParseInstruction() is done and succeeds, this is called by
+  /// AsmParser::parseStatement. Typically this will first call the generated
+  /// MatchInstructionImpl in <Target>GenAsmMatcher.inc. That function goes
+  /// through all Instruction structures from the table that have the same
+  /// first word in the AsmString field. (TODO: confirm this)
+  ///
+  /// For each such Instruction found, MatchInstructionImpl goes through each
+  /// operand in the Operands vector and matches it against the operand classes
+  /// found in the rest of the AsmString field.
+  ///
+  /// This is done by first calling validateOperandClass. If the operand is
+  /// a Token, then we just check if the pseudo-class represented by the token
+  /// is a subclass of the required class. A psuedo-class is created for each
+  /// unique token in an AsmString.
+  ///
+  /// Otherwise, if the operand is not a Token, we call the Operand's
+  /// is<class> method to see if it matches.
+  ///
+  /// If all operands match, then that Instruction is chosen, and the MCInst
+  /// is filled. At that point this function should do the following:
+  ///
+  ///      Inst.setLoc(IDLoc);
+  ///      Opcode = Inst.getOpcode();
+  ///      Out.EmitInstruction(Inst, getSTI());
+  ///      return kSuccess;
+  ///
+  /// Otherwise, on failure, this function should return an Error with
+  /// some appropriate message.
   bool MatchAndEmitInstruction(SMLoc IDLoc, unsigned &Opcode,
                                OperandVector &Operands, MCStreamer &Out,
                                uint64_t &ErrorInfo,
@@ -38,6 +71,22 @@ class MCS6502AsmParser : public MCTargetAsmParser {
 
   bool ParseRegister(unsigned &RegNo, SMLoc &StartLoc, SMLoc &EndLoc) override;
 
+  /// Called by AsmParser::parseStatement, after having parsed a mnemonic.
+  /// The mnemonic is the identifier found after zero or more labels that is
+  /// also not one of the pre-defined directives. Directives start with a
+  /// dot.
+  ///
+  /// `Name` contains the instruction mnemonic in lower case. This function
+  /// must first place the `Name` and `NameLoc` in the Operands vector as a
+  /// Token. Then the function must parse all operands via getLexer() and
+  /// getParser(), placing the operands into the Operands vector.
+  ///
+  /// AsmParser looked for an identifier as the mnemonic, and an identifier,
+  /// to the AsmParser, is the following regex:
+  ///   [$@][a-zA-Z_.][a-zA-Z0-9_$.@]*
+  ///
+  /// After this, AsmParser::parseStatement will call
+  /// MatchAndEmitInstruction with the Operands found.
   bool ParseInstruction(ParseInstructionInfo &Info, StringRef Name,
                         SMLoc NameLoc, OperandVector &Operands) override;
 
@@ -47,9 +96,12 @@ class MCS6502AsmParser : public MCTargetAsmParser {
 #define GET_ASSEMBLER_HEADER
 #include "MCS6502GenAsmMatcher.inc"
 
+  bool parseIndirect(OperandVector &Operands);
+  bool parseLowImmediate(OperandVector &Operands);
+  bool parseHighImmediate(OperandVector &Operands);
+
   OperandMatchResultTy parseImmediate(OperandVector &Operands);
-  OperandMatchResultTy parseRegister(OperandVector &Operands);
-  bool parseOperand(OperandVector &Operands);
+  bool parseRegister(unsigned &RegNo);
 
 public:
   enum MCS6502MatchResultTy {
@@ -68,52 +120,50 @@ public:
 
 /// MCS6502Operand - Instances of this class represent a parsed machine
 /// instruction
-struct MCS6502Operand : public MCParsedAsmOperand {
+class MCS6502Operand : public MCParsedAsmOperand {
+public:
   enum KindTy {
     Token,
     Register,
     Immediate,
+    Indirect,
+    PreIndirect,
+    PostIndirect,
+    ZP,
+    Abs,
+    AbsX,
+    AbsY,
+    ZPX,
+    ZPY,
+    Rel,
   } Kind;
 
-  struct RegOp {
-    unsigned RegNum;
-  };
-
-  struct ImmOp {
-    const MCExpr *Val;
-  };
+  const MCExpr *Val;
+  unsigned RegNum;
 
   SMLoc StartLoc, EndLoc;
-  union {
-    StringRef Tok;
-    RegOp Reg;
-    ImmOp Imm;
-  };
+  std::string Tok;
 
   MCS6502Operand(KindTy K) : MCParsedAsmOperand(), Kind(K) {}
-
-public:
-  MCS6502Operand(const MCS6502Operand &o) : MCParsedAsmOperand() {
-    Kind = o.Kind;
-    StartLoc = o.StartLoc;
-    EndLoc = o.EndLoc;
-    switch (Kind) {
-    case Register:
-      Reg = o.Reg;
-      break;
-    case Immediate:
-      Imm = o.Imm;
-      break;
-    case Token:
-      Tok = o.Tok;
-      break;
-    }
-  }
+  MCS6502Operand(const MCS6502Operand &o) = default;
 
   bool isToken() const override { return Kind == Token; }
   bool isReg() const override { return Kind == Register; }
   bool isImm() const override { return Kind == Immediate; }
   bool isMem() const override { return false; }
+
+  bool isInd() const { return Kind == Indirect; }
+  bool isPreInd() const { return Kind == PreIndirect; }
+  bool isPostInd() const { return Kind == PostIndirect; }
+  bool isZP() const { return Kind == ZP; }
+  bool isAbs() const { return Kind == Abs; }
+  bool isAbsX() const { return Kind == AbsX; }
+  bool isAbsY() const { return Kind == AbsY; }
+  bool isZPX() const { return Kind == ZPX; }
+  bool isZPY() const { return Kind == ZPY; }
+  bool isRel() const { return Kind == Rel || isZP() || isAbs(); }
+
+  bool isAnyInd() const { return isInd() || isPreInd() || isPostInd(); }
 
   bool isConstantImm() const {
     return isImm() && dyn_cast<MCConstantExpr>(getImm());
@@ -132,12 +182,47 @@ public:
 
   unsigned getReg() const override {
     assert(Kind == Register && "Invalid type access!");
-    return Reg.RegNum;
+    return RegNum;
   }
 
   const MCExpr *getImm() const {
     assert(Kind == Immediate && "Invalid type access!");
-    return Imm.Val;
+    return Val;
+  }
+
+  const MCExpr *getZPImm() const {
+    assert(Kind == ZP && "Invalid type access!");
+    return Val;
+  }
+
+  const MCExpr *getAbsImm() const {
+    assert(Kind == Abs && "Invalid type access!");
+    return Val;
+  }
+
+  const MCExpr *getAbsXImm() const {
+    assert(Kind == AbsX && "Invalid type access!");
+    return Val;
+  }
+
+  const MCExpr *getAbsYImm() const {
+    assert(Kind == AbsY && "Invalid type access!");
+    return Val;
+  }
+
+  const MCExpr *getZPXImm() const {
+    assert(Kind == ZPX && "Invalid type access!");
+    return Val;
+  }
+
+  const MCExpr *getZPYImm() const {
+    assert(Kind == ZPY && "Invalid type access!");
+    return Val;
+  }
+
+  const MCExpr *getRelImm() const {
+    assert(isRel() && "Invalid type access!");
+    return Val;
   }
 
   StringRef getToken() const {
@@ -145,13 +230,55 @@ public:
     return Tok;
   }
 
+  unsigned getIndReg() const {
+    assert((isPreInd() || isPostInd()) && "Invalid type access!");
+    return RegNum;
+  }
+
+  const MCExpr *getIndImm() const {
+    assert(isAnyInd() && "Invalid type access!");
+    return Val;
+  }
+
   void print(raw_ostream &OS) const override {
     switch (Kind) {
     case Immediate:
-      OS << *getImm();
+      OS << "<immediate " << *getImm() << ">";
+      break;
+    case Rel:
+      OS << "<rel " << *getRelImm() << ">";
+      break;
+    case ZP:
+      OS << "<zp " << *getZPImm() << ">";
+      break;
+    case ZPX:
+      OS << "<zpx " << *getZPXImm() << ", X>";
+      break;
+    case ZPY:
+      OS << "<zpy " << *getZPYImm() << ", Y>";
+      break;
+    case Abs:
+      OS << "<absolute " << *getAbsImm() << ">";
+      break;
+    case AbsX:
+      OS << "<absolutex " << *getAbsXImm() << ", X>";
+      break;
+    case AbsY:
+      OS << "<absolutey " << *getAbsYImm() << ", Y>";
       break;
     case Register:
       OS << "<register " << getReg() << ">";
+      break;
+    case Indirect:
+      OS << "<indirect (" << *getIndImm() << ")>";
+      break;
+    case PreIndirect:
+      OS << "<preindirect (" << *getIndImm() << ", register " << getIndReg()
+         << ")>";
+      break;
+    case PostIndirect:
+      OS << "<postindirect (" << *getIndImm() << "), register " << getIndReg()
+         << ">";
       break;
     case Token:
       OS << "'" << getToken() << "'";
@@ -159,7 +286,7 @@ public:
     }
   }
 
-  static std::unique_ptr<MCS6502Operand> createToken(StringRef Str, SMLoc S) {
+  static std::unique_ptr<MCS6502Operand> createToken(std::string Str, SMLoc S) {
     auto Op = make_unique<MCS6502Operand>(Token);
     Op->Tok = Str;
     Op->StartLoc = S;
@@ -170,7 +297,7 @@ public:
   static std::unique_ptr<MCS6502Operand> createReg(unsigned RegNo, SMLoc S,
                                                    SMLoc E) {
     auto Op = make_unique<MCS6502Operand>(Register);
-    Op->Reg.RegNum = RegNo;
+    Op->RegNum = RegNo;
     Op->StartLoc = S;
     Op->EndLoc = E;
     return Op;
@@ -179,7 +306,129 @@ public:
   static std::unique_ptr<MCS6502Operand> createImm(const MCExpr *Val, SMLoc S,
                                                    SMLoc E) {
     auto Op = make_unique<MCS6502Operand>(Immediate);
-    Op->Imm.Val = Val;
+    Op->Val = Val;
+    Op->StartLoc = S;
+    Op->EndLoc = E;
+    return Op;
+  }
+
+  static std::unique_ptr<MCS6502Operand> createRel(const MCExpr *Val, SMLoc S,
+                                                   SMLoc E) {
+    auto Op = make_unique<MCS6502Operand>(Rel);
+    Op->Val = Val;
+    Op->StartLoc = S;
+    Op->EndLoc = E;
+    LLVM_DEBUG(dbgs() << "Adding relative operand");
+    return Op;
+  }
+
+  static std::unique_ptr<MCS6502Operand> createZP(const MCExpr *Val, SMLoc S,
+                                                  SMLoc E) {
+    auto Op = make_unique<MCS6502Operand>(ZP);
+    Op->Val = Val;
+    Op->StartLoc = S;
+    Op->EndLoc = E;
+    return Op;
+  }
+
+  static std::unique_ptr<MCS6502Operand> createAbs(const MCExpr *Val, SMLoc S,
+                                                   SMLoc E) {
+    auto Op = make_unique<MCS6502Operand>(Abs);
+    Op->Val = Val;
+    Op->StartLoc = S;
+    Op->EndLoc = E;
+    return Op;
+  }
+
+  static std::unique_ptr<MCS6502Operand>
+  createAbsX(const MCExpr *Val, unsigned RegNo, SMLoc S, SMLoc E) {
+    auto Op = make_unique<MCS6502Operand>(AbsX);
+    Op->RegNum = RegNo;
+    Op->Val = Val;
+    Op->StartLoc = S;
+    Op->EndLoc = E;
+    return Op;
+  }
+
+  static std::unique_ptr<MCS6502Operand>
+  createAbsY(const MCExpr *Val, unsigned RegNo, SMLoc S, SMLoc E) {
+    auto Op = make_unique<MCS6502Operand>(AbsY);
+    Op->RegNum = RegNo;
+    Op->Val = Val;
+    Op->StartLoc = S;
+    Op->EndLoc = E;
+    return Op;
+  }
+
+  static std::unique_ptr<MCS6502Operand>
+  createZPX(const MCExpr *Val, unsigned RegNo, SMLoc S, SMLoc E) {
+    auto Op = make_unique<MCS6502Operand>(ZPX);
+    Op->RegNum = RegNo;
+    Op->Val = Val;
+    Op->StartLoc = S;
+    Op->EndLoc = E;
+    return Op;
+  }
+
+  static std::unique_ptr<MCS6502Operand>
+  createZPY(const MCExpr *Val, unsigned RegNo, SMLoc S, SMLoc E) {
+    auto Op = make_unique<MCS6502Operand>(ZPY);
+    Op->RegNum = RegNo;
+    Op->Val = Val;
+    Op->StartLoc = S;
+    Op->EndLoc = E;
+    return Op;
+  }
+
+  static std::unique_ptr<MCS6502Operand>
+  createLowImm(const MCExpr *Val, MCContext &Ctx, SMLoc S, SMLoc E) {
+    auto Op = make_unique<MCS6502Operand>(Immediate);
+    Op->Val = Val;
+    // MCBinaryExpr::createAnd(Val, MCConstantExpr::create(0xFF, Ctx), Ctx);
+    Op->StartLoc = S;
+    Op->EndLoc = E;
+    return Op;
+  }
+
+  static std::unique_ptr<MCS6502Operand>
+  createHighImm(const MCExpr *Val, MCContext &Ctx, SMLoc S, SMLoc E) {
+    auto Op = make_unique<MCS6502Operand>(Immediate);
+    Op->Val = Val;
+    // Op->Val =
+    //     MCBinaryExpr::createLShr(Val, MCConstantExpr::create(8, Ctx), Ctx);
+    // Op->Val = MCBinaryExpr::createAnd(Op->Val,
+    //                                   MCConstantExpr::create(0xFF, Ctx),
+    //                                   Ctx);
+    Op->StartLoc = S;
+    Op->EndLoc = E;
+    return Op;
+  }
+
+  static std::unique_ptr<MCS6502Operand> createInd(const MCExpr *Val, SMLoc S,
+                                                   SMLoc E) {
+    auto Op = make_unique<MCS6502Operand>(Indirect);
+    Op->RegNum = 0;
+    Op->Val = Val;
+    Op->StartLoc = S;
+    Op->EndLoc = E;
+    return Op;
+  }
+
+  static std::unique_ptr<MCS6502Operand>
+  createPreInd(const MCExpr *Val, unsigned RegNo, SMLoc S, SMLoc E) {
+    auto Op = make_unique<MCS6502Operand>(PreIndirect);
+    Op->RegNum = RegNo;
+    Op->Val = Val;
+    Op->StartLoc = S;
+    Op->EndLoc = E;
+    return Op;
+  }
+
+  static std::unique_ptr<MCS6502Operand>
+  createPostInd(const MCExpr *Val, unsigned RegNo, SMLoc S, SMLoc E) {
+    auto Op = make_unique<MCS6502Operand>(PostIndirect);
+    Op->RegNum = RegNo;
+    Op->Val = Val;
     Op->StartLoc = S;
     Op->EndLoc = E;
     return Op;
@@ -202,6 +451,53 @@ public:
   void addImmOperands(MCInst &Inst, unsigned N) const {
     assert(N == 1 && "Invalid number of operands!");
     addExpr(Inst, getImm());
+  }
+
+  void addRelOperands(MCInst &Inst, unsigned N) const {
+    assert(N == 1 && "Invalid number of operands!");
+    addExpr(Inst, getRelImm());
+  }
+
+  void addPreIndOperands(MCInst &Inst, unsigned N) const {
+    assert(N == 1 && "Invalid number of operands!");
+    addExpr(Inst, getIndImm());
+  }
+
+  void addPostIndOperands(MCInst &Inst, unsigned N) const {
+    assert(N == 1 && "Invalid number of operands!");
+    addExpr(Inst, getIndImm());
+  }
+
+  void addIndOperands(MCInst &Inst, unsigned N) const {
+    assert(N == 1 && "Invalid number of operands!");
+    addExpr(Inst, getIndImm());
+  }
+
+  void addZPOperands(MCInst &Inst, unsigned N) const {
+    assert(N == 1 && "Invalid number of operands!");
+    addExpr(Inst, getZPImm());
+  }
+
+  void addAbsOperands(MCInst &Inst, unsigned N) const {
+    assert(N == 1 && "Invalid number of operands!");
+    addExpr(Inst, getAbsImm());
+  }
+
+  void addAbsXOperands(MCInst &Inst, unsigned N) const {
+    assert(N == 1 && "Invalid number of operands!");
+    addExpr(Inst, getAbsXImm());
+  }
+  void addAbsYOperands(MCInst &Inst, unsigned N) const {
+    assert(N == 1 && "Invalid number of operands!");
+    addExpr(Inst, getAbsYImm());
+  }
+  void addZPXOperands(MCInst &Inst, unsigned N) const {
+    assert(N == 1 && "Invalid number of operands!");
+    addExpr(Inst, getZPXImm());
+  }
+  void addZPYOperands(MCInst &Inst, unsigned N) const {
+    assert(N == 1 && "Invalid number of operands!");
+    addExpr(Inst, getZPYImm());
   }
 };
 
@@ -245,7 +541,6 @@ bool MCS6502AsmParser::MatchAndEmitInstruction(SMLoc IDLoc, unsigned &Opcode,
   llvm_unreachable("Unknown match type detected");
 }
 
-// Although really registers don't appear in the assembly.
 bool MCS6502AsmParser::ParseRegister(unsigned &RegNo, SMLoc &StartLoc,
                                      SMLoc &EndLoc) {
   const AsmToken &Tok = getParser().getTok();
@@ -256,29 +551,25 @@ bool MCS6502AsmParser::ParseRegister(unsigned &RegNo, SMLoc &StartLoc,
 
   if (!MatchRegisterName(Name)) {
     getParser().Lex(); // Eat identifier token.
-    return false;
+    return kParseSuccess;
   }
 
   return Error(StartLoc, "invalid register name");
 }
 
-// Although really registers don't appear in the assembly.
-OperandMatchResultTy MCS6502AsmParser::parseRegister(OperandVector &Operands) {
-  SMLoc S = getLoc();
-  SMLoc E = SMLoc::getFromPointer(S.getPointer() - 1);
-
+bool MCS6502AsmParser::parseRegister(unsigned &RegNo) {
   switch (getLexer().getKind()) {
   default:
-    return MatchOperand_NoMatch;
+    return kParseFailure;
   case AsmToken::Identifier:
     StringRef Name = getLexer().getTok().getIdentifier();
-    unsigned RegNo = MatchRegisterName(Name);
+    RegNo = MatchRegisterName(Name);
     if (RegNo == 0)
-      return MatchOperand_NoMatch;
-    getLexer().Lex();
-    Operands.push_back(MCS6502Operand::createReg(RegNo, S, E));
+      return kParseFailure;
+    LLVM_DEBUG(dbgs() << "  parseRegister: " << RegNo << "\n");
+    getLexer().Lex(); // Eat register.
   }
-  return MatchOperand_Success;
+  return kParseSuccess;
 }
 
 OperandMatchResultTy MCS6502AsmParser::parseImmediate(OperandVector &Operands) {
@@ -303,38 +594,172 @@ OperandMatchResultTy MCS6502AsmParser::parseImmediate(OperandVector &Operands) {
   return MatchOperand_Success;
 }
 
-bool MCS6502AsmParser::parseOperand(OperandVector &Operands) {
-  if (parseRegister(Operands) == MatchOperand_Success)
-    return false;
-  if (parseImmediate(Operands) == MatchOperand_Success)
-    return false;
+bool MCS6502AsmParser::parseLowImmediate(OperandVector &Operands) {
+  const MCExpr *IdVal;
+  SMLoc S = getLoc();
 
-  Error(getLoc(), "unknown operand");
-  return true;
+  Operands.push_back(MCS6502Operand::createToken("#", S));
+
+  if (getParser().parseExpression(IdVal))
+    return Error(getLoc(), "Failed to parse expression");
+
+  SMLoc E = SMLoc::getFromPointer(S.getPointer() - 1);
+  Operands.push_back(MCS6502Operand::createLowImm(IdVal, getContext(), S, E));
+  return kParseSuccess;
+}
+
+bool MCS6502AsmParser::parseHighImmediate(OperandVector &Operands) {
+  const MCExpr *IdVal;
+  SMLoc S = getLoc();
+
+  Operands.push_back(MCS6502Operand::createToken("/", S));
+
+  if (getParser().parseExpression(IdVal))
+    return Error(getLoc(), "Failed to parse expression");
+
+  SMLoc E = SMLoc::getFromPointer(S.getPointer() - 1);
+  Operands.push_back(MCS6502Operand::createHighImm(IdVal, getContext(), S, E));
+  return kParseSuccess;
+}
+
+bool MCS6502AsmParser::parseIndirect(OperandVector &Operands) {
+  SMLoc S = getLoc();
+  const MCExpr *IdVal;
+  unsigned RegNo = 0;
+
+  Operands.push_back(MCS6502Operand::createToken("(", S));
+
+  if (getParser().parseExpression(IdVal) == kParseFailure) {
+    LLVM_DEBUG(dbgs() << "  parseOperand: indirect, failed expr\n");
+    return Error(getLoc(), "Failed to parse expression");
+  }
+
+  LLVM_DEBUG(dbgs() << "  parseOperand: indirect, next after expr: "
+                    << getLexer().getKind() << "\n");
+  switch (getLexer().getKind()) {
+  default:
+    return Error(getLoc(), "Expected ',' or ')' after expression");
+
+  case AsmToken::Comma: {
+    SMLoc E = SMLoc::getFromPointer(S.getPointer() - 1);
+    Operands.push_back(MCS6502Operand::createPreInd(IdVal, RegNo, S, E));
+
+    getParser().Lex(); // Eat ','.
+    LLVM_DEBUG(dbgs() << "  parseOperand: (indirect,)\n");
+    S = getLoc();
+    if (parseRegister(RegNo) == kParseFailure)
+      return kParseFailure;
+    E = SMLoc::getFromPointer(S.getPointer() - 1);
+    Operands.push_back(MCS6502Operand::createReg(RegNo, S, E));
+    if (getLexer().isNot(AsmToken::RParen))
+      return Error(getLoc(), "Expected ')' after indirect value");
+    getParser().Lex(); // Eat ')'.
+
+    Operands.push_back(MCS6502Operand::createToken(")", E));
+    return kParseSuccess;
+  }
+
+  case AsmToken::RParen: {
+    getParser().Lex(); // Eat ')'.
+    if (getLexer().is(AsmToken::Comma)) {
+      getParser().Lex(); // Eat ','.
+      LLVM_DEBUG(dbgs() << "  parseOperand: (indirect),\n");
+      if (parseRegister(RegNo) == kParseFailure)
+        return kParseFailure;
+      SMLoc E = SMLoc::getFromPointer(S.getPointer() - 1);
+      Operands.push_back(MCS6502Operand::createPostInd(IdVal, RegNo, S, E));
+      Operands.push_back(MCS6502Operand::createToken(")", S));
+      Operands.push_back(MCS6502Operand::createReg(RegNo, S, E));
+      return kParseSuccess;
+    }
+    LLVM_DEBUG(dbgs() << "  parseOperand: (indirect)\n");
+    SMLoc E = SMLoc::getFromPointer(S.getPointer() - 1);
+    Operands.push_back(MCS6502Operand::createInd(IdVal, S, E));
+    Operands.push_back(MCS6502Operand::createToken(")", S));
+    return kParseSuccess;
+  }
+  }
 }
 
 bool MCS6502AsmParser::ParseInstruction(ParseInstructionInfo &Info,
                                         StringRef Name, SMLoc NameLoc,
                                         OperandVector &Operands) {
+  SMLoc S = getLoc();
+  const MCExpr *IdVal;
+  unsigned RegNo = 0;
+
   // First operand is token for instruction
-  Operands.push_back(MCS6502Operand::createToken(Name, NameLoc));
+  Operands.push_back(MCS6502Operand::createToken(Name.upper(), NameLoc));
 
-  // If there are no more operands, then finish
+  // If there are no operands, then finish
   if (getLexer().is(AsmToken::EndOfStatement))
-    return false;
+    return kParseSuccess;
 
-  // Parse first operand
-  if (parseOperand(Operands))
-    return true;
+  if (getLexer().is(AsmToken::Hash)) {
+    getParser().Lex(); // Eat '#'
+    if (parseLowImmediate(Operands) == kParseFailure)
+      return kParseFailure;
+  }
 
-  // Parse until end of statement, consuming commas between operands
-  while (getLexer().is(AsmToken::Comma)) {
-    // Consume comma token
-    getLexer().Lex();
+  else if (getLexer().is(AsmToken::Slash)) {
+    getParser().Lex(); // Eat '/'
+    if (parseHighImmediate(Operands) == kParseFailure)
+      return kParseFailure;
+  }
 
-    // Parse next operand
-    if (parseOperand(Operands))
-      return true;
+  else if (getLexer().is(AsmToken::LParen)) {
+    getParser().Lex(); // Eat '('
+    if (parseIndirect(Operands) == kParseFailure)
+      return kParseFailure;
+  }
+
+  else if (parseRegister(RegNo) == kParseSuccess) {
+    SMLoc E = SMLoc::getFromPointer(S.getPointer() - 1);
+    Operands.push_back(MCS6502Operand::createReg(RegNo, S, E));
+  }
+
+  else if (getParser().parseExpression(IdVal) == kParseSuccess) {
+    SMLoc SAddr = S;
+    SMLoc EAddr = SMLoc::getFromPointer(S.getPointer() - 1);
+    bool zp = false;
+
+    if (dyn_cast<MCConstantExpr>(IdVal)) {
+      int64_t sval = static_cast<const MCConstantExpr *>(IdVal)->getValue();
+      uint64_t val = static_cast<uint64_t>(sval);
+      if (val <= 0xFF) {
+        zp = true;
+      } else if (val <= 0xFFFF) {
+        zp = false;
+      } else if (sval >= -0x80 && sval < 0) {
+        zp = true;
+      } else {
+        return Error(S, "value must be 16 bits or less");
+      }
+    } else {
+      zp = false;
+    }
+
+    SMLoc E = getLoc();
+    if (getLexer().is(AsmToken::Comma)) {
+      getParser().Lex(); // Eat ','
+      S = getLoc();
+      if (parseRegister(RegNo) == kParseFailure)
+        return kParseFailure;
+      E = SMLoc::getFromPointer(S.getPointer() - 1);
+    }
+
+    if (RegNo == 0) {
+      Operands.push_back(zp ? MCS6502Operand::createZP(IdVal, SAddr, EAddr)
+                            : MCS6502Operand::createAbs(IdVal, SAddr, EAddr));
+    } else {
+      Operands.push_back(
+          RegNo == MCS6502::X
+              ? (zp ? MCS6502Operand::createZPX(IdVal, RegNo, S, E)
+                    : MCS6502Operand::createAbsX(IdVal, RegNo, S, E))
+              : (zp ? MCS6502Operand::createZPY(IdVal, RegNo, S, E)
+                    : MCS6502Operand::createAbsY(IdVal, RegNo, S, E)));
+      Operands.push_back(MCS6502Operand::createReg(RegNo, S, E));
+    }
   }
 
   if (getLexer().isNot(AsmToken::EndOfStatement)) {
@@ -344,7 +769,7 @@ bool MCS6502AsmParser::ParseInstruction(ParseInstructionInfo &Info,
   }
 
   getParser().Lex(); // Consume the EndOfStatement;
-  return false;
+  return kParseSuccess;
 }
 
 bool MCS6502AsmParser::ParseDirective(AsmToken DirectiveID) { return true; }
