@@ -80,26 +80,32 @@ def ind : Operand<i16> {
 
 def zp_preind : Operand<i8> {
   let ParserMatchClass = PreIndAsmOperand;
+  let DecoderMethod = "decodePreIndOperand";
 }
 
 def zp_postind : Operand<i8> {
   let ParserMatchClass = PostIndAsmOperand;
+  let DecoderMethod = "decodePostIndOperand";
 }
 
 def absx : Operand<i16> {
   let ParserMatchClass = AbsXAsmOperand;
+  let DecoderMethod = "decodeAbsXOperand";
 }
 
 def absy : Operand<i16> {
   let ParserMatchClass = AbsYAsmOperand;
+  let DecoderMethod = "decodeAbsYOperand";
 }
 
 def zpx : Operand<i8> {
   let ParserMatchClass = ZPXAsmOperand;
+  let DecoderMethod = "decodeZPXOperand";
 }
 
 def zpy : Operand<i8> {
   let ParserMatchClass = ZPYAsmOperand;
+  let DecoderMethod = "decodeZPYOperand";
 }
 
 //===----------------------------------------------------------------------===//
@@ -141,6 +147,7 @@ class Inst1Byte<string mnemonic, bits<8> opcode, Mode mode,
     dag outs, list<dag> patterns = []> : Instruction {
   let Namespace = "MCS6502";
   let Size = 1;
+  field bits<32> SoftFail = 0;
 
   bits<8> Inst;
 
@@ -148,12 +155,14 @@ class Inst1Byte<string mnemonic, bits<8> opcode, Mode mode,
   let AsmString = mnemonic # " " # mode.Argstr;
   let OutOperandList = outs;
   let InOperandList = mode.InOperandList;
+  let DecoderMethod = !if(!eq(mode.Value, MODE_ACC.Value), "decodeAccOperand", "");
 }
 
 class Inst2Byte<string mnemonic, bits<8> opcode, Mode mode,
     dag outs, list<dag> patterns = []> : Instruction {
   let Namespace = "MCS6502";
   let Size = 2;
+  field bits<32> SoftFail = 0;
 
   bits<16> Inst;
   bits<8> val8;
@@ -169,6 +178,7 @@ class Inst3Byte<string mnemonic, bits<8> opcode, Mode mode,
     dag outs, list<dag> patterns = []> : Instruction {
   let Namespace = "MCS6502";
   let Size = 3;
+  field bits<32> SoftFail = 0;
 
   bits<24> Inst;
   bits<16> val16;

@@ -29,7 +29,6 @@ using namespace llvm;
 void MCS6502InstPrinter::printInst(const MCInst *MI, raw_ostream &O,
                                    StringRef Annot,
                                    const MCSubtargetInfo &STI) {
-  assert("Whoah!");
   printInstruction(MI, O);
   printAnnotation(O, Annot);
 }

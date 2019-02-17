@@ -1,5 +1,7 @@
 ; RUN: llvm-mc %s -triple=mcs6502 -show-encoding \
 ; RUN:     | FileCheck -check-prefixes=CHECK,CHECK-INST %s
+; RUN: llvm-mc %s -triple=mcs6502 -filetype=obj \
+; RUN:     | llvm-objdump -d - | FileCheck -check-prefixes=CHECK-INST %s
 
 ; Immediate mode
 

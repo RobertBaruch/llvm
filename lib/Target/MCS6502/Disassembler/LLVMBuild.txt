@@ -1,4 +1,4 @@
-;===- ./lib/Target/MCS6502/LLVMBuild.txt -----------------------*- Conf -*--===;
+;===- ./lib/Target/MCS6502/Disassembler/LLVMBuild.txt ----------*- Conf -*--===;
 ;
 ; Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 ; See https://llvm.org/LICENSE.txt for license information.
@@ -14,19 +14,9 @@
 ;
 ;===------------------------------------------------------------------------===;
 
-[common]
-subdirectories = AsmParser Disassembler InstPrinter MCTargetDesc TargetInfo
-
 [component_0]
-type = TargetGroup
-name = MCS6502
-parent = Target
-has_asmparser = 1
-has_disassembler = 1
-
-[component_1]
 type = Library
-name = MCS6502CodeGen
+name = MCS6502Disassembler
 parent = MCS6502
-required_libraries = AsmPrinter Core CodeGen MC MCS6502AsmPrinter MCS6502Desc MCS6502Info Support Target
+required_libraries = MCDisassembler MCS6502Info Support
 add_to_library_groups = MCS6502

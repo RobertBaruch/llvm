@@ -58,4 +58,7 @@ createMCS6502ELFObjectWriter(uint8_t OSABI, bool Is64Bit);
 #define GET_INSTRINFO_ENUM
 #include "MCS6502GenInstrInfo.inc"
 
+#define GET_SUBTARGETINFO_ENUM
+#include "MCS6502GenSubtargetInfo.inc"
+
 #endif // LLVM_LIB_TARGET_MCS6502_MCTARGET_DESC_MCS6502MCTARGETDESC_H
