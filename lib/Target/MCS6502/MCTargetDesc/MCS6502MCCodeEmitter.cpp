@@ -11,6 +11,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "MCTargetDesc/MCS6502FixupKinds.h"
 #include "MCTargetDesc/MCS6502MCTargetDesc.h"
 #include "llvm/ADT/Statistic.h"
 #include "llvm/MC/MCAsmInfo.h"
@@ -22,6 +23,7 @@
 #include "llvm/MC/MCInstrInfo.h"
 #include "llvm/MC/MCRegisterInfo.h"
 #include "llvm/MC/MCSymbol.h"
+#include "llvm/Support/Casting.h"
 #include "llvm/Support/EndianStream.h"
 #include "llvm/Support/raw_ostream.h"
 
@@ -30,6 +32,7 @@ using namespace llvm;
 #define DEBUG_TYPE "mccodeemitter"
 
 STATISTIC(MCNumEmitted, "Number of MC instructions emitted");
+STATISTIC(MCNumFixups, "Number of MC fixups emitted");
 
 namespace {
 
@@ -49,18 +52,26 @@ public:
 
   ~MCS6502MCCodeEmitter() override = default;
 
+  /// Takes the given MCInst and outputs bytes into the output stream, possibly
+  /// adding fixups to the Fixups vector for bits thatneed to be fixed up later.
+  /// The output bytes are called a "fragment".
+  ///
+  /// Called by MCAsmStreamer::AddEncodingComment via a long chain ultimately
+  /// called by MCS6502AsmParser:MatchAndEmitInstruction when it calls
+  /// Out.EmitInstruction.
   void encodeInstruction(const MCInst &MI, raw_ostream &OS,
                          SmallVectorImpl<MCFixup> &Fixups,
                          const MCSubtargetInfo &STI) const override;
 
   /// TableGen'erated function for getting the binary encoding for an
-  /// instruction.
+  /// instruction, defined in MCS6502GenMCCodeEmitter.inc.
   uint64_t getBinaryCodeForInstr(const MCInst &MI,
                                  SmallVectorImpl<MCFixup> &Fixups,
                                  const MCSubtargetInfo &STI) const;
 
   /// Returns binary encoding of an operand. If the machine operand requires
-  /// relocation, records the relocation and returns zero.
+  /// relocation, records the relocation and returns zero. Called by
+  /// getBinaryCodeForInstr.
   unsigned getMachineOpValue(const MCInst &MI, const MCOperand &MO,
                              SmallVectorImpl<MCFixup> &Fixups,
                              const MCSubtargetInfo &STI) const;
@@ -94,20 +105,51 @@ void MCS6502MCCodeEmitter::encodeInstruction(const MCInst &MI, raw_ostream &OS,
     break;
   }
   ++MCNumEmitted;
+  LLVM_DEBUG(dbgs() << "encodeInstruction done\n");
 }
 
 unsigned
 MCS6502MCCodeEmitter::getMachineOpValue(const MCInst &MI, const MCOperand &MO,
                                         SmallVectorImpl<MCFixup> &Fixups,
                                         const MCSubtargetInfo &STI) const {
-  if (MO.isReg()) // in practice, there are no register operands.
-    return Ctx.getRegisterInfo()->getEncodingValue(MO.getReg());
+  const MCInstrDesc &Desc = MCII.get(MI.getOpcode());
+
+  LLVM_DEBUG(dbgs() << "encodeInstruction: getMachineOpValue\n");
+
+  // Constants just get their value returned, no fixups needed.
   if (MO.isImm())
     return static_cast<unsigned>(MO.getImm());
 
-  LLVM_DEBUG(dbgs() << "Unhandled machine op value: ");
-  LLVM_DEBUG(MO.print(dbgs()));
-  llvm_unreachable("Unhandled expression!");
+  assert(MO.isExpr() &&
+         "getMachineOpValue expects only expressions or immediates");
+
+  const MCExpr *Expr = MO.getExpr();
+  MCExpr::ExprKind Kind = Expr->getKind();
+  MCS6502::Fixups FixupKind = MCS6502::fixup_mcs6502_invalid;
+
+  LLVM_DEBUG(dbgs() << "encodeInstruction: MCExpr kind " << Kind << "\n");
+
+  // VK = Variant Kind. What are they used for?
+  if (Kind == MCExpr::SymbolRef &&
+      cast<MCSymbolRefExpr>(Expr)->getKind() == MCSymbolRefExpr::VK_None) {
+    if (Desc.isConditionalBranch()) {
+      FixupKind = MCS6502::fixup_mcs6502_branch;
+    } else {
+      assert(Desc.getSize() > 1 && "Expected instruction size > 1");
+      // If the instruction size is 2, we will only have an 8-bit value,
+      // otherwise a 16-bit value.
+      FixupKind = Desc.getSize() == 2 ? MCS6502::fixup_mcs6502_symbol8
+                                      : MCS6502::fixup_mcs6502_symbol16;
+    }
+    LLVM_DEBUG(dbgs() << "encodeInstruction: symbol fixup added");
+  }
+
+  assert(FixupKind != MCS6502::fixup_mcs6502_invalid &&
+         "Unhandled expression!");
+
+  Fixups.push_back(MCFixup::create(0 /* offset */, Expr, MCFixupKind(FixupKind),
+                                   MI.getLoc()));
+  ++MCNumFixups;
   return 0;
 }
 

@@ -12,11 +12,15 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "MCTargetDesc/MCS6502FixupKinds.h"
 #include "MCTargetDesc/MCS6502MCTargetDesc.h"
 #include "llvm/MC/MCELFObjectWriter.h"
 #include "llvm/MC/MCFixup.h"
 #include "llvm/MC/MCObjectWriter.h"
+#include "llvm/Support/Debug.h"
 #include "llvm/Support/ErrorHandling.h"
+
+#define DEBUG_TYPE "objwriter"
 
 using namespace llvm;
 
@@ -42,7 +46,16 @@ unsigned MCS6502ELFObjectWriter::getRelocType(MCContext &Ctx,
                                               const MCValue &Target,
                                               const MCFixup &Fixup,
                                               bool IsPCRel) const {
-  report_fatal_error("invalid fixup kind!");
+  switch (static_cast<MCS6502::Fixups>(Fixup.getKind())) {
+  default:
+    llvm_unreachable("invalid fixup kind!");
+  case MCS6502::fixup_mcs6502_symbol8:
+    return ELF::R_MCS6502_SYMBOL8;
+  case MCS6502::fixup_mcs6502_symbol16:
+    return ELF::R_MCS6502_SYMBOL16;
+  case MCS6502::fixup_mcs6502_branch:
+    return ELF::R_MCS6502_BRANCH;
+  }
 }
 
 } // namespace

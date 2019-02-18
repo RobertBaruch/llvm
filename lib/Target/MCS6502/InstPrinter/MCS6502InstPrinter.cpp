@@ -15,6 +15,7 @@
 #include "llvm/MC/MCAsmInfo.h"
 #include "llvm/MC/MCExpr.h"
 #include "llvm/MC/MCInst.h"
+#include "llvm/MC/MCInstrInfo.h"
 #include "llvm/MC/MCSymbol.h"
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/FormattedStream.h"
@@ -63,10 +64,15 @@ void MCS6502InstPrinter::printImmediate(const MCInst *MI, unsigned OpNo,
 
   const MCOperand &MO = MI->getOperand(OpNo);
 
-  assert(MO.isImm() && "printImmediate can only print immediates");
+  if (MO.isImm()) {
+    llvm::write_hex(O, static_cast<uint8_t>(MO.getImm()),
+                    HexPrintStyle::PrefixLower);
+    return;
+  }
 
-  llvm::write_hex(O, static_cast<uint8_t>(MO.getImm()),
-                  HexPrintStyle::PrefixLower);
+  assert(MO.isExpr() && "Unknown operand kind in printImmediate");
+
+  MO.getExpr()->print(O, &MAI, false);
 }
 
 void MCS6502InstPrinter::printImmediate16(const MCInst *MI, unsigned OpNo,
@@ -76,8 +82,13 @@ void MCS6502InstPrinter::printImmediate16(const MCInst *MI, unsigned OpNo,
 
   const MCOperand &MO = MI->getOperand(OpNo);
 
-  assert(MO.isImm() && "printImmediate16 can only print immediates");
+  if (MO.isImm()) {
+    llvm::write_hex(O, static_cast<uint16_t>(MO.getImm()),
+                    HexPrintStyle::PrefixLower);
+    return;
+  }
 
-  llvm::write_hex(O, static_cast<uint16_t>(MO.getImm()),
-                  HexPrintStyle::PrefixLower);
+  assert(MO.isExpr() && "Unknown operand kind in printImmediate16");
+
+  MO.getExpr()->print(O, &MAI, false);
 }

@@ -193,6 +193,14 @@ class Inst3Byte<string mnemonic, bits<8> opcode, Mode mode,
 
 class imp_inst<string mnemonic, bits<8> opcode> : Inst1Byte<mnemonic, opcode,
     MODE_IMP, (outs)>;
+
+class cond_branch_inst<string mnemonic, bits<8> opcode> :
+    Inst2Byte<mnemonic, opcode, MODE_REL, (outs)> {
+  // Together these make isConditionalBranch true.
+  let isBranch = 1;
+  let isBarrier = 0;
+  let isIndirectBranch = 0;
+}
     
 // See also: nparker.llx.com/a2/opcodes.html
 

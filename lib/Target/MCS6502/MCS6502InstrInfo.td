@@ -40,14 +40,14 @@ defm LDY : ldy_inst<"LDY", 0b101>;
 defm CPY : cpx_cpy_inst<"CPY", 0b110>;
 defm CPX : cpx_cpy_inst<"CPX", 0b111>;
 
-def BPL : Inst2Byte<"BPL", 0x10, MODE_REL, (outs)>;
-def BMI : Inst2Byte<"BMI", 0x30, MODE_REL, (outs)>;
-def BVC : Inst2Byte<"BVC", 0x50, MODE_REL, (outs)>;
-def BVS : Inst2Byte<"BVS", 0x70, MODE_REL, (outs)>;
-def BCC : Inst2Byte<"BCC", 0x90, MODE_REL, (outs)>;
-def BCS : Inst2Byte<"BCS", 0xB0, MODE_REL, (outs)>;
-def BNE : Inst2Byte<"BNE", 0xD0, MODE_REL, (outs)>;
-def BEQ : Inst2Byte<"BEQ", 0xF0, MODE_REL, (outs)>;
+def BPL : cond_branch_inst<"BPL", 0x10>;
+def BMI : cond_branch_inst<"BMI", 0x30>;
+def BVC : cond_branch_inst<"BVC", 0x50>;
+def BVS : cond_branch_inst<"BVS", 0x70>;
+def BCC : cond_branch_inst<"BCC", 0x90>;
+def BCS : cond_branch_inst<"BCS", 0xB0>;
+def BNE : cond_branch_inst<"BNE", 0xD0>;
+def BEQ : cond_branch_inst<"BEQ", 0xF0>;
 
 def JSR : Inst3Byte<"JSR", 0x20, MODE_ABS, (outs)>;
 
